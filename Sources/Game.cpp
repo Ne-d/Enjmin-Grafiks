@@ -59,9 +59,15 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	// TP: allouer vertexBuffer ici
 	const std::vector<float> data = {
-		0.0f, 0.5f, 0.0f,
+		// Triangle 0
+		-0.5f, 0.5f, 0.0f,
 		0.5f, -0.5f, 0.0f,
-		-0.5f, -0.5f, 0.0f
+		-0.5f, -0.5f, 0.0f,
+
+		// Triangle 1
+		0.5f, 0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		-0.5f, 0.5f, 0.0f
 	};
 
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
@@ -122,7 +128,7 @@ void Game::Render() {
 	UINT offsets[1] = {0};
 	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
 
-	context->Draw(9, 0);
+	context->Draw(6, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
