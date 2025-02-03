@@ -163,7 +163,7 @@ void Game::Render() {
 	context->VSSetConstantBuffers(0, 1, constantBuffers);
 
 	const MatrixData matrix = MatrixData{
-		Matrix::CreateTranslation(Vector3::Zero).Transpose(),
+		Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) / 4, 0).Transpose(),
 		Matrix::CreateLookAt(Vector3(sin(m_timer.GetTotalSeconds()), 0, cos(m_timer.GetTotalSeconds())), Vector3::Zero,
 			Vector3::Up).Transpose(),
 		Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(90), 800.0 / 600.0, 0.1f, 100.0f).Transpose()
