@@ -162,9 +162,10 @@ void Game::Render() {
 	ID3D11Buffer* constantBuffers[] = { matrixConstantBuffer.Get() };
 	context->VSSetConstantBuffers(0, 1, constantBuffers);
 
-	MatrixData matrix = MatrixData{
-		Matrix::CreateTranslation(m_timer.GetTotalSeconds(), 0, 0).Transpose(),
-		Matrix::CreateLookAt(Vector3(0, 0, 1), Vector3::Zero, Vector3::Up).Transpose(),
+	const MatrixData matrix = MatrixData{
+		Matrix::CreateTranslation(Vector3::Zero).Transpose(),
+		Matrix::CreateLookAt(Vector3(sin(m_timer.GetTotalSeconds()), 0, cos(m_timer.GetTotalSeconds())), Vector3::Zero,
+			Vector3::Up).Transpose(),
 		Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(90), 800.0 / 600.0, 0.1f, 100.0f).Transpose()
 	};
 
