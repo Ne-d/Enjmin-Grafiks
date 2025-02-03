@@ -22,14 +22,22 @@ Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
 ComPtr<ID3D11Buffer> indexBuffer;
-ComPtr<ID3D11Buffer> matrixConstantBuffer;
+ComPtr<ID3D11Buffer> constantBufferModel;
+ComPtr<ID3D11Buffer> constantBufferCamera;
 ComPtr<ID3D11InputLayout> inputLayout;
 
-struct MatrixData {
+struct ModelData {
 	Matrix model;
+};
+
+struct CameraData {
 	Matrix view;
 	Matrix projection;
 };
+
+// TODO: Put this in some Camera class
+Matrix view;
+Matrix projection;
 
 // Game
 Game::Game() noexcept(false) {
@@ -68,7 +76,7 @@ void Game::Initialize(HWND window, int width, int height) {
 		inputLayout.ReleaseAndGetAddressOf());
 
 	// TP: allouer vertexBuffer ici
-	const std::vector<float> data = {
+	const std::vector<float> vertices = {
 		-0.5f, 0.5f, 0.0f,
 		0.5f, 0.5f, 0.0f,
 		0.5f, -0.5f, 0.0f,
@@ -79,9 +87,9 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	// Vertex Buffer
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
-	vertexSubresourceData.pSysMem = data.data();
+	vertexSubresourceData.pSysMem = vertices.data();
 
-	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * data.size(), D3D11_BIND_VERTEX_BUFFER);
+	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
 	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.ReleaseAndGetAddressOf());
 	if (result != S_OK) {
 		std::cerr << "Failed to create vertex buffer" << std::endl;
@@ -100,9 +108,18 @@ void Game::Initialize(HWND window, int width, int height) {
 	}
 
 	// Matrix Constant Buffer
+	const CD3D11_BUFFER_DESC modelConstantBufferDesc(sizeof(ModelData), D3D11_BIND_CONSTANT_BUFFER);
+	device->CreateBuffer(&modelConstantBufferDesc, nullptr, constantBufferModel.ReleaseAndGetAddressOf());
 
-	const CD3D11_BUFFER_DESC matrixBufferDesc(sizeof(MatrixData), D3D11_BIND_CONSTANT_BUFFER);
-	result = device->CreateBuffer(&matrixBufferDesc, nullptr, matrixConstantBuffer.ReleaseAndGetAddressOf());
+	const CD3D11_BUFFER_DESC cameraConstantBufferDesc(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
+	device->CreateBuffer(&cameraConstantBufferDesc, nullptr, constantBufferCamera.ReleaseAndGetAddressOf());
+
+	projection = Matrix::CreatePerspectiveFieldOfView(
+		XMConvertToRadians(90),
+		(float)width / (float)height,
+		0.1f,
+		100.0f
+	);
 }
 
 void Game::Tick() {
@@ -119,6 +136,11 @@ void Game::Update(DX::StepTimer const& timer) {
 	auto const ms = m_mouse->GetState();
 	
 	// add kb/mouse interact here
+	view = Matrix::CreateLookAt(
+		Vector3(sin(m_timer.GetTotalSeconds()), 0, cos(m_timer.GetTotalSeconds())),
+		Vector3::Zero,
+		Vector3::Up
+	);
 	
 	if (kb.Escape)
 		ExitGame();
@@ -148,28 +170,27 @@ void Game::Render() {
 	basicShader->Apply(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->IASetInputLayout(inputLayout.Get());
-
-	// Set active buffers
-	ID3D11Buffer* vertexBuffers[] = {vertexBuffer.Get()};
-	constexpr UINT strides[1] = { sizeof(float) * 3 };
-	constexpr UINT offsets[1] = { 0 };
+	ID3D11Buffer* vertexBuffers[] = { vertexBuffer.Get() };
+	constexpr UINT strides[] = { sizeof(float) * 3 };
+	constexpr UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
 	
 	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-	ID3D11Buffer* constantBuffers[] = { matrixConstantBuffer.Get() };
-	context->VSSetConstantBuffers(0, 1, constantBuffers);
-
-	const MatrixData matrix = MatrixData{
-		Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) / 4, 0).Transpose(),
-		Matrix::CreateLookAt(Vector3(sin(m_timer.GetTotalSeconds()), 0, cos(m_timer.GetTotalSeconds())), Vector3::Zero,
-			Vector3::Up).Transpose(),
-		Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(90), 800.0 / 600.0, 0.1f, 100.0f).Transpose()
+	const ModelData modelData = ModelData{
+		Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) / 4, 0).Transpose()
 	};
 
-	context->UpdateSubresource(matrixConstantBuffer.Get(), 0, nullptr, &matrix, 0, 0);
+	const CameraData cameraData = CameraData{
+		view.Transpose(),
+		projection.Transpose()
+	};
+
+	context->UpdateSubresource(constantBufferModel.Get(), 0, nullptr, &modelData, 0, 0);
+	context->UpdateSubresource(constantBufferCamera.Get(), 0, nullptr, &cameraData, 0, 0);
+
+	ID3D11Buffer* constantBuffers[] = { constantBufferModel.Get(), constantBufferCamera.Get() };
+	context->VSSetConstantBuffers(0, 2, constantBuffers);
 	
 	context->DrawIndexed(6, 0, 0);
 
@@ -202,6 +223,13 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
+	projection = Matrix::CreatePerspectiveFieldOfView(
+		XMConvertToRadians(90),
+		(float)width / (float)height,
+		0.1f,
+		100.0f
+	);
+	
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }

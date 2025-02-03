@@ -1,8 +1,11 @@
-cbuffer MatrixData: register(b0) {
+cbuffer ModelData: register(b0) {
 	float4x4 model;
+};
+
+cbuffer CameraData: register(b1) {
 	float4x4 view;
 	float4x4 projection;
-};
+}
 
 struct Input {
 	float3 pos : POSITION0;
