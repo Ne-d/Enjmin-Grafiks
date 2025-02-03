@@ -22,7 +22,14 @@ Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
 ComPtr<ID3D11Buffer> indexBuffer;
+ComPtr<ID3D11Buffer> matrixConstantBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
+
+struct MatrixData {
+	Matrix model;
+	Matrix view;
+	Matrix projection;
+};
 
 // Game
 Game::Game() noexcept(false) {
@@ -68,27 +75,41 @@ void Game::Initialize(HWND window, int width, int height) {
 		-0.5f, -0.5f, 0.0f
 	};
 
-	const std::vector<unsigned int> indices = { 0, 1, 2, 2, 3, 0 };
+	const std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
+	// Vertex Buffer
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
 	vertexSubresourceData.pSysMem = data.data();
 
 	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * data.size(), D3D11_BIND_VERTEX_BUFFER);
-	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.GetAddressOf());
+	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.ReleaseAndGetAddressOf());
 	if (result != S_OK) {
 		std::cerr << "Failed to create vertex buffer" << std::endl;
 		exit(1);
 	}
 
+	// Index Buffer
 	D3D11_SUBRESOURCE_DATA indexSubresourceData;
 	indexSubresourceData.pSysMem = indices.data();
 
-	const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned int) * indices.size(), D3D11_BIND_INDEX_BUFFER);
-	result = device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, indexBuffer.GetAddressOf());
+	const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(uint32_t) * indices.size(), D3D11_BIND_INDEX_BUFFER);
+	result = device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, indexBuffer.ReleaseAndGetAddressOf());
 	if (result != S_OK) {
 		std::cerr << "Failed to create index buffer" << std::endl;
 		exit(1);
 	}
+
+	// Matrix Constant Buffer
+	MatrixData matrix = MatrixData{
+		Matrix::CreateTranslation(0.2, 0, 0).Transpose(),
+		Matrix::CreateLookAt(Vector3(0, 0, 1), Vector3::Zero, Vector3::Up).Transpose(),
+		Matrix::CreatePerspectiveFieldOfView(90 * (XM_PI / 180.0f), 16.0f / 9.0f, 0.1f, 100.0f).Transpose()
+	};
+	D3D11_SUBRESOURCE_DATA matrixSubresourceData;
+	matrixSubresourceData.pSysMem = &matrix;
+
+	const CD3D11_BUFFER_DESC matrixBufferDesc(sizeof(MatrixData), D3D11_BIND_CONSTANT_BUFFER);
+	result = device->CreateBuffer(&matrixBufferDesc, &matrixSubresourceData, matrixConstantBuffer.ReleaseAndGetAddressOf());
 }
 
 void Game::Tick() {
@@ -137,12 +158,16 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 
+	// Set active buffers
 	ID3D11Buffer* vertexBuffers[] = {vertexBuffer.Get()};
-	UINT strides[1] = {sizeof(float) * 3};
-	UINT offsets[1] = {0};
+	constexpr UINT strides[1] = { sizeof(float) * 3 };
+	constexpr UINT offsets[1] = { 0 };
 	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
-
+	
 	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11Buffer* constantBuffers[] = { matrixConstantBuffer.Get() };
+	context->VSSetConstantBuffers(0, 1, constantBuffers);
 
 	context->DrawIndexed(6, 0, 0);
 

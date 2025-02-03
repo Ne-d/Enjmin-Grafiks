@@ -16,7 +16,7 @@ namespace
 	std::unique_ptr<Game> g_game;
 }
 
-LPCWSTR g_szAppName = L"Minicraft";
+LPCWSTR g_szAppName = L"rectangl.";
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void ExitGame() noexcept;
