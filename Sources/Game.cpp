@@ -58,6 +58,17 @@ void Game::Initialize(HWND window, int width, int height) {
 		inputLayout.ReleaseAndGetAddressOf());
 
 	// TP: allouer vertexBuffer ici
+	const std::vector<float> data = {
+		0.0f, 0.5f, 0.0f,
+		0.5f, -0.5f, 0.0f,
+		-0.5f, -0.5f, 0.0f
+	};
+
+	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
+	vertexSubresourceData.pSysMem = data.data();
+	
+	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * data.size(), D3D11_BIND_VERTEX_BUFFER);
+	device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.GetAddressOf());
 }
 
 void Game::Tick() {
@@ -103,6 +114,15 @@ void Game::Render() {
 	basicShader->Apply(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(inputLayout.Get());
+
+	ID3D11Buffer* vertexBuffers[] = {vertexBuffer.Get()};
+	UINT strides[1] = {sizeof(float) * 3};
+	UINT offsets[1] = {0};
+	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
+
+	context->Draw(9, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
