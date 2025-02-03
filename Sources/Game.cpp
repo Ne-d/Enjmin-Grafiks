@@ -100,16 +100,9 @@ void Game::Initialize(HWND window, int width, int height) {
 	}
 
 	// Matrix Constant Buffer
-	MatrixData matrix = MatrixData{
-		Matrix::CreateTranslation(0.2, 0, 0).Transpose(),
-		Matrix::CreateLookAt(Vector3(0, 0, 1), Vector3::Zero, Vector3::Up).Transpose(),
-		Matrix::CreatePerspectiveFieldOfView(90 * (XM_PI / 180.0f), 16.0f / 9.0f, 0.1f, 100.0f).Transpose()
-	};
-	D3D11_SUBRESOURCE_DATA matrixSubresourceData;
-	matrixSubresourceData.pSysMem = &matrix;
 
 	const CD3D11_BUFFER_DESC matrixBufferDesc(sizeof(MatrixData), D3D11_BIND_CONSTANT_BUFFER);
-	result = device->CreateBuffer(&matrixBufferDesc, &matrixSubresourceData, matrixConstantBuffer.ReleaseAndGetAddressOf());
+	result = device->CreateBuffer(&matrixBufferDesc, nullptr, matrixConstantBuffer.ReleaseAndGetAddressOf());
 }
 
 void Game::Tick() {
@@ -169,6 +162,14 @@ void Game::Render() {
 	ID3D11Buffer* constantBuffers[] = { matrixConstantBuffer.Get() };
 	context->VSSetConstantBuffers(0, 1, constantBuffers);
 
+	MatrixData matrix = MatrixData{
+		Matrix::CreateTranslation(m_timer.GetTotalSeconds(), 0, 0).Transpose(),
+		Matrix::CreateLookAt(Vector3(0, 0, 1), Vector3::Zero, Vector3::Up).Transpose(),
+		Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(90), 800.0 / 600.0, 0.1f, 100.0f).Transpose()
+	};
+
+	context->UpdateSubresource(matrixConstantBuffer.Get(), 0, nullptr, &matrix, 0, 0);
+	
 	context->DrawIndexed(6, 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
