@@ -5,6 +5,8 @@
 #include "pch.h"
 #include "Game.h"
 
+#include <iostream>
+
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
 
@@ -19,6 +21,7 @@ using Microsoft::WRL::ComPtr;
 Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
+ComPtr<ID3D11Buffer> indexBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
 
 // Game
@@ -59,22 +62,33 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	// TP: allouer vertexBuffer ici
 	const std::vector<float> data = {
-		// Triangle 0
 		-0.5f, 0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		-0.5f, -0.5f, 0.0f,
-
-		// Triangle 1
 		0.5f, 0.5f, 0.0f,
 		0.5f, -0.5f, 0.0f,
-		-0.5f, 0.5f, 0.0f
+		-0.5f, -0.5f, 0.0f
 	};
+
+	const std::vector<unsigned int> indices = { 0, 1, 2, 2, 3, 0 };
 
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
 	vertexSubresourceData.pSysMem = data.data();
-	
-	CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * data.size(), D3D11_BIND_VERTEX_BUFFER);
-	device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.GetAddressOf());
+
+	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * data.size(), D3D11_BIND_VERTEX_BUFFER);
+	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.GetAddressOf());
+	if (result != S_OK) {
+		std::cerr << "Failed to create vertex buffer" << std::endl;
+		exit(1);
+	}
+
+	D3D11_SUBRESOURCE_DATA indexSubresourceData;
+	indexSubresourceData.pSysMem = indices.data();
+
+	const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned int) * indices.size(), D3D11_BIND_INDEX_BUFFER);
+	result = device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, indexBuffer.GetAddressOf());
+	if (result != S_OK) {
+		std::cerr << "Failed to create index buffer" << std::endl;
+		exit(1);
+	}
 }
 
 void Game::Tick() {
@@ -128,7 +142,9 @@ void Game::Render() {
 	UINT offsets[1] = {0};
 	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
 
-	context->Draw(6, 0);
+	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+	context->DrawIndexed(6, 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
