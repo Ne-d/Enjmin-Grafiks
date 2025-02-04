@@ -9,6 +9,7 @@
 
 #include "PerlinNoise.hpp"
 #include "Engine/Shader.h"
+#include "Engine/VertexLayout.h"
 
 extern void ExitGame() noexcept;
 
@@ -67,20 +68,14 @@ void Game::Initialize(HWND window, const int width, const int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	device->CreateInputLayout(
-		InputElementDescs.data(), InputElementDescs.size(),
-		basicShader->vsBytecode.data(), basicShader->vsBytecode.size(),
-		inputLayout.ReleaseAndGetAddressOf());
+	GenerateInputLayout<VertexLayout_Position>(m_deviceResources.get(), basicShader);
 
 	// TP: allouer vertexBuffer ici
-	const std::vector<float> vertices = {
-		-0.5f, 0.5f, 0.0f,
-		0.5f, 0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		-0.5f, -0.5f, 0.0f
+	const std::vector<VertexLayout_Position> vertices = {
+		{ { -0.5f, 0.5f, 0.0f, 1.0f } },
+		{ { 0.5f, 0.5f, 0.0f, 1.0f } },
+		{ { 0.5f, -0.5f, 0.0f, 1.0f } },
+		{ { -0.5f, -0.5f, 0.0f, 1.0f } }
 	};
 
 	const std::vector<uint32_t> indices = {
@@ -92,7 +87,7 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
 	vertexSubresourceData.pSysMem = vertices.data();
 
-	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(float) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
+	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(VertexLayout_Position) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
 	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.ReleaseAndGetAddressOf());
 	if (result != S_OK) {
 		std::cerr << "Failed to create vertex buffer" << std::endl;
@@ -178,11 +173,12 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 
+	ApplyInputLayout<VertexLayout_Position>(m_deviceResources.get());
 	basicShader->Apply(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
 	ID3D11Buffer* vertexBuffers[] = { vertexBuffer.Get() };
-	constexpr UINT strides[] = { sizeof(float) * 3 };
+	constexpr UINT strides[] = { sizeof(VertexLayout_Position) };
 	constexpr UINT offsets[] = { 0 };
 	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
 	

@@ -11,7 +11,7 @@ cbuffer CameraData: register(b1) {
 
 // Must correspond to the input layout
 struct Input {
-	float3 pos : POSITION0;
+	float4 pos : POSITION0;
 };
 
 // Must correspond to the pixel shader's input
@@ -22,7 +22,7 @@ struct Output {
 Output main(Input input) {
 	Output output;
 
-	output.pos = mul(float4(input.pos, 1), model);
+	output.pos = mul(input.pos, model);
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 
