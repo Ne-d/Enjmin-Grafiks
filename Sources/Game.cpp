@@ -8,6 +8,8 @@
 #include <iostream>
 
 #include "PerlinNoise.hpp"
+#include "Engine/Buffers.h"
+#include "Engine/Cube.h"
 #include "Engine/Shader.h"
 #include "Engine/VertexLayout.h"
 
@@ -21,12 +23,6 @@ using Microsoft::WRL::ComPtr;
 // Global stuff
 Shader* basicShader;
 
-ComPtr<ID3D11Buffer> vertexBuffer;
-ComPtr<ID3D11Buffer> indexBuffer;
-ComPtr<ID3D11Buffer> constantBufferModel;
-ComPtr<ID3D11Buffer> constantBufferCamera;
-ComPtr<ID3D11InputLayout> inputLayout;
-
 struct ModelData {
 	Matrix model;
 };
@@ -35,6 +31,12 @@ struct CameraData {
 	Matrix view;
 	Matrix projection;
 };
+
+VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
+IndexBuffer indexBuffer;
+ConstantBuffer<ModelData> constantBufferModel;
+ConstantBuffer<CameraData> constantBufferCamera;
+ComPtr<ID3D11InputLayout> inputLayout;
 
 // TODO: Put this in some Camera class
 Matrix view;
@@ -68,57 +70,22 @@ void Game::Initialize(HWND window, const int width, const int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	GenerateInputLayout<VertexLayout_Position>(m_deviceResources.get(), basicShader);
-
-	// TP: allouer vertexBuffer ici
-	const std::vector<VertexLayout_Position> vertices = {
-		{ { -0.5f, 0.5f, 0.0f, 1.0f } },
-		{ { 0.5f, 0.5f, 0.0f, 1.0f } },
-		{ { 0.5f, -0.5f, 0.0f, 1.0f } },
-		{ { -0.5f, -0.5f, 0.0f, 1.0f } }
-	};
-
-	const std::vector<uint32_t> indices = {
-		0, 1, 2,
-		2, 3, 0
-	};
-
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
+		
 	// Vertex Buffer
-	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
-	vertexSubresourceData.pSysMem = vertices.data();
-
-	const CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(VertexLayout_Position) * vertices.size(), D3D11_BIND_VERTEX_BUFFER);
-	HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, vertexBuffer.ReleaseAndGetAddressOf());
-	if (result != S_OK) {
-		std::cerr << "Failed to create vertex buffer" << std::endl;
-		exit(1);
-	}
+	vertexBuffer.PushVertex({ { -0.5f, 0.5f, 0.0f, 1.0f }, { 0, 1 } });
+	vertexBuffer.PushVertex({ { 0.5f, 0.5f, 0.0f, 1.0f }, { 1, 1 } });
+	vertexBuffer.PushVertex({ { 0.5f, -0.5f, 0.0f, 1.0f }, { 1, 0 } });
+	vertexBuffer.PushVertex({ { -0.5f, -0.5f, 0.0f, 1.0f }, { 0, 0 } });
+	vertexBuffer.Create(m_deviceResources.get());
 
 	// Index Buffer
-	D3D11_SUBRESOURCE_DATA indexSubresourceData;
-	indexSubresourceData.pSysMem = indices.data();
+	indexBuffer.PushTriangle(0, 1, 2);
+	indexBuffer.PushTriangle(2, 3, 0);
+	indexBuffer.Create(m_deviceResources.get());
 
-	const CD3D11_BUFFER_DESC indexBufferDesc(sizeof(uint32_t) * indices.size(), D3D11_BIND_INDEX_BUFFER);
-	result = device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, indexBuffer.ReleaseAndGetAddressOf());
-	if (result != S_OK) {
-		std::cerr << "Failed to create index buffer" << std::endl;
-		exit(1);
-	}
-
-	// Matrix Constant Buffer
-	const CD3D11_BUFFER_DESC modelConstantBufferDesc(sizeof(ModelData), D3D11_BIND_CONSTANT_BUFFER);
-	result = device->CreateBuffer(&modelConstantBufferDesc, nullptr, constantBufferModel.ReleaseAndGetAddressOf());
-	if (result != S_OK) {
-		std::cerr << "Failed to create model constant buffer" << std::endl;
-		exit(1);
-	}
-	
-	const CD3D11_BUFFER_DESC cameraConstantBufferDesc(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
-	result = device->CreateBuffer(&cameraConstantBufferDesc, nullptr, constantBufferCamera.ReleaseAndGetAddressOf());
-	if (result != S_OK) {
-		std::cerr << "Failed to create camera constant buffer" << std::endl;
-		exit(1);
-	}
+	constantBufferModel.Create(m_deviceResources.get());
+	constantBufferCamera.Create(m_deviceResources.get());
 	
 	projection = Matrix::CreatePerspectiveFieldOfView(
 		XMConvertToRadians(90),
@@ -173,16 +140,14 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 
-	ApplyInputLayout<VertexLayout_Position>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 	basicShader->Apply(m_deviceResources.get());
 
 	// TP: Tracer votre vertex buffer ici
-	ID3D11Buffer* vertexBuffers[] = { vertexBuffer.Get() };
-	constexpr UINT strides[] = { sizeof(VertexLayout_Position) };
-	constexpr UINT offsets[] = { 0 };
-	context->IASetVertexBuffers(0, 1, vertexBuffers, strides, offsets);
-	
-	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	vertexBuffer.Apply(m_deviceResources.get());
+	indexBuffer.Apply(m_deviceResources.get());
+	constantBufferModel.ApplyToVS(m_deviceResources.get(), 0);
+	constantBufferCamera.ApplyToVS(m_deviceResources.get(), 1);
 
 	const ModelData modelData = ModelData{
 		Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) / 4, 0).Transpose()
@@ -193,12 +158,8 @@ void Game::Render() {
 		projection.Transpose()
 	};
 
-	context->UpdateSubresource(constantBufferModel.Get(), 0, nullptr, &modelData, 0, 0);
-	context->UpdateSubresource(constantBufferCamera.Get(), 0, nullptr, &cameraData, 0, 0);
-
-	// Tell the Vertex Shader to use our constant buffers
-	ID3D11Buffer* constantBuffers[] = { constantBufferModel.Get(), constantBufferCamera.Get() };
-	context->VSSetConstantBuffers(0, 2, constantBuffers);
+	constantBufferModel.UpdateBuffer(m_deviceResources.get(), modelData);
+	constantBufferCamera.UpdateBuffer(m_deviceResources.get(), cameraData);
 	
 	context->DrawIndexed(6, 0, 0);
 
