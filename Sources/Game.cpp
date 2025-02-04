@@ -50,7 +50,7 @@ Game::~Game() {
 	g_inputLayouts.clear();
 }
 
-void Game::Initialize(HWND window, int width, int height) {
+void Game::Initialize(HWND window, const int width, const int height) {
 	// Create input devices
 	m_gamePad = std::make_unique<GamePad>();
 	m_keyboard = std::make_unique<Keyboard>();
@@ -83,7 +83,10 @@ void Game::Initialize(HWND window, int width, int height) {
 		-0.5f, -0.5f, 0.0f
 	};
 
-	const std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+	const std::vector<uint32_t> indices = {
+		0, 1, 2,
+		2, 3, 0
+	};
 
 	// Vertex Buffer
 	D3D11_SUBRESOURCE_DATA vertexSubresourceData;
@@ -109,11 +112,19 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	// Matrix Constant Buffer
 	const CD3D11_BUFFER_DESC modelConstantBufferDesc(sizeof(ModelData), D3D11_BIND_CONSTANT_BUFFER);
-	device->CreateBuffer(&modelConstantBufferDesc, nullptr, constantBufferModel.ReleaseAndGetAddressOf());
-
+	result = device->CreateBuffer(&modelConstantBufferDesc, nullptr, constantBufferModel.ReleaseAndGetAddressOf());
+	if (result != S_OK) {
+		std::cerr << "Failed to create model constant buffer" << std::endl;
+		exit(1);
+	}
+	
 	const CD3D11_BUFFER_DESC cameraConstantBufferDesc(sizeof(CameraData), D3D11_BIND_CONSTANT_BUFFER);
-	device->CreateBuffer(&cameraConstantBufferDesc, nullptr, constantBufferCamera.ReleaseAndGetAddressOf());
-
+	result = device->CreateBuffer(&cameraConstantBufferDesc, nullptr, constantBufferCamera.ReleaseAndGetAddressOf());
+	if (result != S_OK) {
+		std::cerr << "Failed to create camera constant buffer" << std::endl;
+		exit(1);
+	}
+	
 	projection = Matrix::CreatePerspectiveFieldOfView(
 		XMConvertToRadians(90),
 		(float)width / (float)height,
@@ -154,10 +165,10 @@ void Game::Render() {
 	if (m_timer.GetFrameCount() == 0)
 		return;
 
-	auto context = m_deviceResources->GetD3DDeviceContext();
-	auto renderTarget = m_deviceResources->GetRenderTargetView();
-	auto depthStencil = m_deviceResources->GetDepthStencilView();
-	auto const viewport = m_deviceResources->GetScreenViewport();
+	const auto context = m_deviceResources->GetD3DDeviceContext();
+	const auto renderTarget = m_deviceResources->GetRenderTargetView();
+	const auto depthStencil = m_deviceResources->GetDepthStencilView();
+	const auto viewport = m_deviceResources->GetScreenViewport();
 
 	context->ClearRenderTargetView(renderTarget, Colors::CornflowerBlue);
 	context->ClearDepthStencilView(depthStencil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -189,12 +200,13 @@ void Game::Render() {
 	context->UpdateSubresource(constantBufferModel.Get(), 0, nullptr, &modelData, 0, 0);
 	context->UpdateSubresource(constantBufferCamera.Get(), 0, nullptr, &cameraData, 0, 0);
 
+	// Tell the Vertex Shader to use our constant buffers
 	ID3D11Buffer* constantBuffers[] = { constantBufferModel.Get(), constantBufferCamera.Get() };
 	context->VSSetConstantBuffers(0, 2, constantBuffers);
 	
 	context->DrawIndexed(6, 0, 0);
 
-	// envoie nos commandes au GPU pour etre afficher � l'�cran
+	// envoie nos commandes au GPU pour être affiché à l'écran
 	m_deviceResources->Present();
 }
 
@@ -231,7 +243,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	);
 	
 	// The windows size has changed:
-	// We can realloc here any resources that depends on the target resolution (post processing etc)
+	// We can realloc here any resources that depends on the target resolution (post-processing, etc.)
 }
 
 void Game::OnDeviceLost() {
