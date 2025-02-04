@@ -9,7 +9,6 @@
 
 #include "PerlinNoise.hpp"
 #include "Engine/Buffers.h"
-#include "Engine/Cube.h"
 #include "Engine/Shader.h"
 #include "Engine/VertexLayout.h"
 
