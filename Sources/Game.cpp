@@ -9,6 +9,7 @@
 
 #include "PerlinNoise.hpp"
 #include "Engine/Buffers.h"
+#include "Minicraft/Cube.h"
 #include "Engine/Shader.h"
 #include "Engine/VertexLayout.h"
 
@@ -31,11 +32,11 @@ struct CameraData {
 	Matrix projection;
 };
 
-VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
-IndexBuffer indexBuffer;
 ConstantBuffer<ModelData> constantBufferModel;
 ConstantBuffer<CameraData> constantBufferCamera;
 ComPtr<ID3D11InputLayout> inputLayout;
+
+Cube cube(Vector3::Zero);
 
 // TODO: Put this in some Camera class
 Matrix view;
@@ -67,21 +68,9 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
-	auto device = m_deviceResources->GetD3DDevice();
-
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
-		
-	// Vertex Buffer
-	vertexBuffer.PushVertex({ { -0.5f, 0.5f, 0.0f, 1.0f }, { 0, 1 } });
-	vertexBuffer.PushVertex({ { 0.5f, 0.5f, 0.0f, 1.0f }, { 1, 1 } });
-	vertexBuffer.PushVertex({ { 0.5f, -0.5f, 0.0f, 1.0f }, { 1, 0 } });
-	vertexBuffer.PushVertex({ { -0.5f, -0.5f, 0.0f, 1.0f }, { 0, 0 } });
-	vertexBuffer.Create(m_deviceResources.get());
 
-	// Index Buffer
-	indexBuffer.PushTriangle(0, 1, 2);
-	indexBuffer.PushTriangle(2, 3, 0);
-	indexBuffer.Create(m_deviceResources.get());
+	cube.Generate(m_deviceResources.get());
 
 	constantBufferModel.Create(m_deviceResources.get());
 	constantBufferCamera.Create(m_deviceResources.get());
@@ -109,10 +98,13 @@ void Game::Update(DX::StepTimer const& timer) {
 	
 	// add kb/mouse interact here
 	view = Matrix::CreateLookAt(
-		Vector3(sin(m_timer.GetTotalSeconds()), 0, cos(m_timer.GetTotalSeconds())),
+		Vector3(sin(m_timer.GetTotalSeconds()) * 2, 0, cos(m_timer.GetTotalSeconds()) * 2),
+		//Vector3(0, 0, 2),
 		Vector3::Zero,
 		Vector3::Up
 	);
+
+	cube.SetModelMatrix(Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4), 0));
 	
 	if (kb.Escape)
 		ExitGame();
@@ -126,11 +118,13 @@ void Game::Render() {
 	if (m_timer.GetFrameCount() == 0)
 		return;
 
+	// Setup Device Resource Variables
 	const auto context = m_deviceResources->GetD3DDeviceContext();
 	const auto renderTarget = m_deviceResources->GetRenderTargetView();
 	const auto depthStencil = m_deviceResources->GetDepthStencilView();
 	const auto viewport = m_deviceResources->GetScreenViewport();
 
+	// Prepare frame
 	context->ClearRenderTargetView(renderTarget, Colors::CornflowerBlue);
 	context->ClearDepthStencilView(depthStencil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	context->RSSetViewports(1, &viewport);
@@ -138,19 +132,11 @@ void Game::Render() {
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
-
 	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 	basicShader->Apply(m_deviceResources.get());
 
-	// TP: Tracer votre vertex buffer ici
-	vertexBuffer.Apply(m_deviceResources.get());
-	indexBuffer.Apply(m_deviceResources.get());
-	constantBufferModel.ApplyToVS(m_deviceResources.get(), 0);
-	constantBufferCamera.ApplyToVS(m_deviceResources.get(), 1);
-
-	const ModelData modelData = ModelData{
-		Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) / 4, 0).Transpose()
-	};
+	// Prepare and send Constant Buffers (Model, View and Projection matrices) to Vertex Shader.
+	const ModelData modelData = ModelData{ cube.GetModelMatrix().Transpose() };
 
 	const CameraData cameraData = CameraData{
 		view.Transpose(),
@@ -159,10 +145,13 @@ void Game::Render() {
 
 	constantBufferModel.UpdateBuffer(m_deviceResources.get(), modelData);
 	constantBufferCamera.UpdateBuffer(m_deviceResources.get(), cameraData);
-	
-	context->DrawIndexed(6, 0, 0);
 
-	// envoie nos commandes au GPU pour être affiché à l'écran
+	constantBufferModel.ApplyToVS(m_deviceResources.get(), 0);
+	constantBufferCamera.ApplyToVS(m_deviceResources.get(), 1);
+
+	// Draw objects
+	cube.Draw(m_deviceResources.get());
+	
 	m_deviceResources->Present();
 }
 

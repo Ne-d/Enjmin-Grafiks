@@ -34,6 +34,7 @@ public:
 	}
 
 	void Apply(const DeviceResources* deviceRes, const int slot = 0) const {
+		assert(buffer.Get() != nullptr);
 		ID3D11Buffer* vbs[] = { buffer.Get() };
 		const UINT strides[] = { sizeof(TVertex) };
 		constexpr UINT offsets[] = { 0 };
@@ -79,6 +80,7 @@ public:
 	}
 
 	void Apply(const DeviceResources* deviceRes) const {
+		assert(buffer.Get() != nullptr);
 		deviceRes->GetD3DDeviceContext()->IASetIndexBuffer(buffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	}
 
@@ -113,6 +115,7 @@ public:
 	}
 
 	void ApplyToVS(const DeviceResources* deviceRes, const int slot = 0) const {
+		assert(buffer.Get() != nullptr);
 		ID3D11Buffer* cbs[] = { buffer.Get() };
 		deviceRes->GetD3DDeviceContext()->VSSetConstantBuffers(slot, 1, cbs);
 	}
