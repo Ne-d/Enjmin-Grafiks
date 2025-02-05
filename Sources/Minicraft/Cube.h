@@ -8,7 +8,7 @@
 class Cube {
 public:
 	explicit Cube();
-	explicit Cube(Vector3 position);
+	explicit Cube(Vector3 position, BlockId blockId = GRASS);
 
 	void Generate(const DeviceResources* deviceRes);
 
@@ -29,5 +29,5 @@ private:
 	IndexBuffer indexBuffer;
 	Matrix modelMatrix;
 
-	BlockId blockId = GRASS;
+	BlockId blockId = DIRT;
 };

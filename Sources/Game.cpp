@@ -73,7 +73,7 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	for (int x = -size; x < size; ++x) {
 		for (int y = -size; y < size; ++y) {
 			for (int z = -size; z < size; ++z) {
-				auto& cube = cubes.emplace_back(Vector3(x * 2, y * 2, z * 2));
+				auto& cube = cubes.emplace_back(Vector3(x * 2, y * 2, z * 2), TNT);
 				cube.Generate(m_deviceResources.get());
 			}
 		}

@@ -6,9 +6,10 @@ Cube::Cube()
 	modelMatrix(Matrix::Identity) {
 }
 
-Cube::Cube(const Vector3 position)
+Cube::Cube(const Vector3 position, const BlockId blockId)
 	:
-	modelMatrix(Matrix::CreateTranslation(position)) {
+	modelMatrix(Matrix::CreateTranslation(position)),
+	blockId(blockId) {
 }
 
 // Tile coordinates from 0 to 16
