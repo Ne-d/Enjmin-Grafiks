@@ -1,6 +1,9 @@
 ﻿#pragma once
+#include "Block.h"
 #include "Engine/Buffers.h"
 #include "Engine/VertexLayout.h"
+
+#define ATLAS_NUMBER_OF_TILES 16
 
 class Cube {
 public:
@@ -19,10 +22,12 @@ public:
 
 private:
 	// Methods
-	void PushFace(Vector3 position, Vector3 up, Vector3 right);
+	void PushFace(Vector3 position, Vector3 up, Vector3 right, Vector2 uv);
 
 	// Data
 	VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
 	IndexBuffer indexBuffer;
 	Matrix modelMatrix;
+
+	BlockId blockId = GRASS;
 };

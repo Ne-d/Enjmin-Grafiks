@@ -22,13 +22,13 @@ void Camera::UpdateAspectRatio(const float aspectRatio) {
 }
 
 void Camera::Update(float dt, const Keyboard::State& keyboard, DirectX::Mouse* mouse) {
-	float rotationSpeed = 0.25f;
-	float mouseSpeed = 10.0f;
+	constexpr float rotationSpeed = 0.1f;
+	constexpr float mouseSpeed = 10.0f;
 	float speed = 15.0f;
 	if (keyboard.LeftShift)
 		speed *= 2.0f;
 
-	Mouse::State mouseState = mouse->GetState();
+	const auto mouseState = mouse->GetState();
 	const Matrix inverseView = view.Invert();
 
 	Vector3 translationInput = Vector3::Zero;
@@ -46,7 +46,7 @@ void Camera::Update(float dt, const Keyboard::State& keyboard, DirectX::Mouse* m
 	if (keyboard.A)
 		translationInput += Vector3::Down;
 
-	// TransformNormal(cameraSpaceVector, inverseView) turns the 
+	// TransformNormal(cameraSpaceVector, inverseView) turns the camera space vector into a world-space vector.
 	Vector3 translationDelta = Vector3::TransformNormal(translationInput * speed, inverseView);
 	position += translationDelta * dt;
 
