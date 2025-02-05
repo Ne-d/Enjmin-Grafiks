@@ -13,14 +13,12 @@ Cube::Cube(const Vector3 position)
 
 void Cube::Generate(const DeviceResources* deviceRes) {
 	PushFace({ -0.5f, -0.5f, 0.5f }, Vector3::Up, Vector3::Right);
-	PushFace({ 0.5f, -0.5f, -0.5f }, Vector3::Up, Vector3::Left);
-
 	PushFace({ 0.5f, -0.5f, 0.5f }, Vector3::Up, Vector3::Forward);
+	PushFace({ 0.5f, -0.5f, -0.5f }, Vector3::Up, Vector3::Left);
 	PushFace({ -0.5f, -0.5f, -0.5f }, Vector3::Up, Vector3::Backward);
-
 	PushFace({ 0.5f, 0.5f, 0.5f }, Vector3::Left, Vector3::Forward);
 	PushFace({ -0.5f, -0.5f, 0.5f }, Vector3::Right, Vector3::Forward);
-
+	
 	vertexBuffer.Create(deviceRes);
 	indexBuffer.Create(deviceRes);
 }
@@ -63,7 +61,7 @@ void Cube::PushFace(const Vector3 position, const Vector3 up, const Vector3 righ
 	const auto c = vertexBuffer.PushVertex({ ToVector4(position + right), { 1, 0 } });
 
 	// Vertex 3: Top-right
-	const auto d = vertexBuffer.PushVertex({ ToVector4(position + right + up), { 1, 0 } });
+	const auto d = vertexBuffer.PushVertex({ ToVector4(position + right + up), { 1, 1 } });
 
 	// Indices
 	indexBuffer.PushTriangle(a, b, c);

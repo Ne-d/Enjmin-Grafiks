@@ -11,6 +11,7 @@
 #include "Engine/Buffers.h"
 #include "Minicraft/Cube.h"
 #include "Engine/Shader.h"
+#include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
 
 extern void ExitGame() noexcept;
@@ -36,7 +37,8 @@ ConstantBuffer<ModelData> constantBufferModel;
 ConstantBuffer<CameraData> constantBufferCamera;
 ComPtr<ID3D11InputLayout> inputLayout;
 
-Cube cube(Vector3::Zero);
+std::vector<Cube> cubes;
+Texture texture(L"terrain");
 
 // TODO: Put this in some Camera class
 Matrix view;
@@ -44,7 +46,7 @@ Matrix projection;
 
 // Game
 Game::Game() noexcept(false) {
-	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
+	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
 
@@ -70,7 +72,18 @@ void Game::Initialize(HWND window, const int width, const int height) {
 
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 
-	cube.Generate(m_deviceResources.get());
+	texture.Create(m_deviceResources.get());
+
+	int size = 10;
+	cubes.reserve(2 * size * size * size);
+	for (int x = -size; x < size; ++x) {
+		for (int y = -size; y < size; ++y) {
+			for (int z = -size; z < size; ++z) {
+				auto& cube = cubes.emplace_back(Vector3(x * 2, y * 2, z * 2));
+				cube.Generate(m_deviceResources.get());
+			}
+		}
+	}
 
 	constantBufferModel.Create(m_deviceResources.get());
 	constantBufferCamera.Create(m_deviceResources.get());
@@ -98,13 +111,12 @@ void Game::Update(DX::StepTimer const& timer) {
 	
 	// add kb/mouse interact here
 	view = Matrix::CreateLookAt(
-		Vector3(sin(m_timer.GetTotalSeconds()) * 2, 0, cos(m_timer.GetTotalSeconds()) * 2),
-		//Vector3(0, 0, 2),
+		Vector3(sin(m_timer.GetTotalSeconds()) * 2, 1, cos(m_timer.GetTotalSeconds()) * 2),
 		Vector3::Zero,
 		Vector3::Up
 	);
 
-	cube.SetModelMatrix(Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4), 0));
+	//cube.SetModelMatrix(Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) * 0.75, 0));
 	
 	if (kb.Escape)
 		ExitGame();
@@ -136,21 +148,26 @@ void Game::Render() {
 	basicShader->Apply(m_deviceResources.get());
 
 	// Prepare and send Constant Buffers (Model, View and Projection matrices) to Vertex Shader.
-	const ModelData modelData = ModelData{ cube.GetModelMatrix().Transpose() };
 
 	const CameraData cameraData = CameraData{
 		view.Transpose(),
 		projection.Transpose()
 	};
 
-	constantBufferModel.UpdateBuffer(m_deviceResources.get(), modelData);
-	constantBufferCamera.UpdateBuffer(m_deviceResources.get(), cameraData);
-
 	constantBufferModel.ApplyToVS(m_deviceResources.get(), 0);
 	constantBufferCamera.ApplyToVS(m_deviceResources.get(), 1);
 
+	texture.Apply(m_deviceResources.get());
+	
 	// Draw objects
-	cube.Draw(m_deviceResources.get());
+	for (auto& cube : cubes) {
+		const ModelData modelData = ModelData{ cube.GetModelMatrix().Transpose() };
+
+		constantBufferModel.UpdateBuffer(m_deviceResources.get(), modelData);
+		constantBufferCamera.UpdateBuffer(m_deviceResources.get(), cameraData);
+
+		cube.Draw(m_deviceResources.get());
+	}
 	
 	m_deviceResources->Present();
 }

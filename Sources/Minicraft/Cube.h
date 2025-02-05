@@ -11,8 +11,8 @@ public:
 
 	[[nodiscard]] const VertexBuffer<VertexLayout_PositionUV>& GetVertexBuffer() const;
 	[[nodiscard]] const IndexBuffer& GetIndexBuffer() const;
-	[[nodiscard]] const Matrix& GetModelMatrix() const;
 
+	[[nodiscard]] const Matrix& GetModelMatrix() const;
 	void SetModelMatrix(const Matrix& modelMatrix);
 
 	void Draw(const DeviceResources* deviceRes) const;
