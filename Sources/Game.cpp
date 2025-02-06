@@ -9,7 +9,7 @@
 
 #include "PerlinNoise.hpp"
 #include "Engine/Buffers.h"
-#include "Minicraft/Cube.h"
+#include "Minicraft/Chunk.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
@@ -33,7 +33,7 @@ struct ModelData {
 ConstantBuffer<ModelData> constantBufferModel;
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world;
+World world(2, 2, 2);
 Texture texture(L"terrain");
 Camera camera(80, 1);
 
@@ -72,6 +72,8 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	world.Generate(m_deviceResources.get());
 
 	constantBufferModel.Create(m_deviceResources.get());
+
+	//std::cout << "Block: " << (int)*world.GetBlock(33, 2, 0);
 }
 
 void Game::Tick() {
@@ -88,8 +90,6 @@ void Game::Update(DX::StepTimer const& timer) {
 	
 	// add kb/mouse interact here
 	camera.Update(timer.GetElapsedSeconds(), kb, m_mouse.get());
-	
-	//cube.SetModelMatrix(Matrix::CreateTranslation(0, sin(m_timer.GetTotalSeconds() * 4) * 0.75, 0));
 	
 	if (kb.Escape)
 		ExitGame();

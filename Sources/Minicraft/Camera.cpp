@@ -22,7 +22,7 @@ void Camera::UpdateAspectRatio(const float aspectRatio) {
 }
 
 void Camera::Update(float dt, const Keyboard::State& keyboard, DirectX::Mouse* mouse) {
-	constexpr float rotationSpeed = 0.1f;
+	constexpr float rotationSpeed = 0.25f;
 	constexpr float mouseSpeed = 10.0f;
 	float speed = 15.0f;
 	if (keyboard.LeftShift)
