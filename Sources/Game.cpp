@@ -14,6 +14,7 @@
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
 #include "Minicraft/Camera.h"
+#include "Minicraft/World.h"
 
 extern void ExitGame() noexcept;
 
@@ -32,7 +33,7 @@ struct ModelData {
 ConstantBuffer<ModelData> constantBufferModel;
 ComPtr<ID3D11InputLayout> inputLayout;
 
-std::vector<Cube> cubes;
+World world;
 Texture texture(L"terrain");
 Camera camera(80, 1);
 
@@ -67,17 +68,8 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	texture.Create(m_deviceResources.get());
 
 	camera.UpdateAspectRatio((float)width / (float)height);
-	
-	int size = 10;
-	cubes.reserve(2 * size * size * size);
-	for (int x = -size; x < size; ++x) {
-		for (int y = -size; y < size; ++y) {
-			for (int z = -size; z < size; ++z) {
-				auto& cube = cubes.emplace_back(Vector3(x * 2, y * 2, z * 2), TNT);
-				cube.Generate(m_deviceResources.get());
-			}
-		}
-	}
+
+	world.Generate(m_deviceResources.get());
 
 	constantBufferModel.Create(m_deviceResources.get());
 }
@@ -135,13 +127,8 @@ void Game::Render() {
 	texture.Apply(m_deviceResources.get());
 
 	camera.Apply(m_deviceResources.get());
-	
-	// Draw objects
-	for (auto& cube : cubes) {
-		const ModelData modelData = ModelData{ cube.GetModelMatrix().Transpose() };
-		constantBufferModel.UpdateBuffer(m_deviceResources.get(), modelData);
-		cube.Draw(m_deviceResources.get());
-	}
+
+	world.Draw(m_deviceResources.get());
 	
 	m_deviceResources->Present();
 }

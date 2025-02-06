@@ -20,6 +20,7 @@ public:
 
 	void Draw(const DeviceResources* deviceRes) const;
 
+	BlockId blockId = DIRT;
 private:
 	// Methods
 	void PushFace(Vector3 position, Vector3 up, Vector3 right, Vector2 uv);
@@ -28,6 +29,4 @@ private:
 	VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
 	IndexBuffer indexBuffer;
 	Matrix modelMatrix;
-
-	BlockId blockId = DIRT;
 };
