@@ -74,20 +74,56 @@ void World::InitializeChunks() {
 }
 
 void World::GenerateChunks() {
-	siv::BasicPerlinNoise<float> perlinNoise(69420);
+	siv::BasicPerlinNoise<float> perlinNoise((int)'*');
 	
 	// Generate block data
 	for (int x = 0; x < nbChunksX * CHUNK_SIZE; ++x) {
 		for (int y = 0; y < nbChunksY * CHUNK_SIZE; ++y) {
 			for (int z = 0; z < nbChunksZ * CHUNK_SIZE; ++z) {
-				int terrainHeight = 10 + perlinNoise.octave2D_01(x, z, 2) * 5;
+				const auto fx = (float)x;
+				const auto fy = (float)y;
+				const auto fz = (float)z;
 
+				constexpr float bigNoiseScale = 50;
+				constexpr float bigNoiseAmplitude = 35;
+				constexpr float bigNoiseOffsetX = 0;
+				constexpr float bigNoiseOffsetY = 0;
+
+				constexpr float mediumNoiseScale = 15;
+				constexpr float mediumNoiseAmplitude = 8;
+				constexpr float mediumNoiseOffsetX = 69;
+				constexpr float mediumNoiseOffsetY = 420;
+
+				constexpr float smallNoiseScale = 8;
+				constexpr float smallNoiseAmplitude = 2;
+				constexpr float smallNoiseOffsetX = 42;
+				constexpr float smallNoiseOffsetY = 69420;
+
+				const int terrainHeight = 10 +
+					perlinNoise.octave2D_01(fx / bigNoiseScale + bigNoiseOffsetX,
+						fz / bigNoiseScale + bigNoiseOffsetY, 1) * bigNoiseAmplitude
+
+					+ perlinNoise.octave2D_01(fx / mediumNoiseScale + mediumNoiseOffsetX,
+						fz / mediumNoiseScale + mediumNoiseOffsetY, 2) * mediumNoiseAmplitude
+
+					+ perlinNoise.octave2D_01(fx / smallNoiseScale + smallNoiseOffsetX,
+						fz / smallNoiseScale + smallNoiseOffsetY, 3) * smallNoiseAmplitude;
+
+				constexpr int waterHeight = 28;
+				constexpr int sandHeightDelta = 1;
+
+				if (y < waterHeight)
+					SetBlock(x, y, z, WATER);
+				
 				if (y < terrainHeight - 4)
 					SetBlock(x, y, z, STONE);
 				else if (y >= terrainHeight - 4 && y <= terrainHeight - 1)
 					SetBlock(x, y, z, DIRT);
 				else if (y == terrainHeight)
 					SetBlock(x, y, z, GRASS);
+
+				if (y >= waterHeight - sandHeightDelta && y < waterHeight + sandHeightDelta && y <= terrainHeight)
+					SetBlock(x, y, z, SAND);
 			}
 		}
 	}

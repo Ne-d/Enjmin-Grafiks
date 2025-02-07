@@ -24,9 +24,12 @@ void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
 			}
 		}
 	}
-	
-	vertexBuffer.Create(deviceRes);
-	indexBuffer.Create(deviceRes);
+
+	if (vertexBuffer.Size() > 0)
+		vertexBuffer.Create(deviceRes);
+
+	if (indexBuffer.Size() > 0)
+		indexBuffer.Create(deviceRes);
 }
 
 
@@ -139,28 +142,34 @@ Vector4 ToVector4(const Vector3 v3) {
 
 void Chunk::PushFace(const Vector3 position, const Vector3 up, const Vector3 right, const Vector2 uv) {
 	constexpr float uvTileSize = 1.0 / 16.0;
-	
+
+	Vector4 normal = ToVector4(right.Cross(up));
+
 	// Vertex 0: Bottom-left
 	const auto a = vertexBuffer.PushVertex({
 		ToVector4(position),
+		normal,
 		{ uv.x, uv.y + uvTileSize },
 	});
 
 	// Vertex 1: Top-left
 	const auto b = vertexBuffer.PushVertex({
 		ToVector4(position + up),
+		normal,
 		{ uv.x, uv.y }
 	});
 
 	// Vertex 2: Bottom-right
 	const auto c = vertexBuffer.PushVertex({
 		ToVector4(position + right),
+		normal,
 		{ uv.x + uvTileSize, uv.y + uvTileSize },
 	});
 
 	// Vertex 3: Top-right
 	const auto d = vertexBuffer.PushVertex({
 		ToVector4(position + right + up),
+		normal,
 		{ uv.x + uvTileSize, uv.y },
 	});
 

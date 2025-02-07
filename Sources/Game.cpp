@@ -33,7 +33,7 @@ struct ModelData {
 ConstantBuffer<ModelData> constantBufferModel;
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world(2, 2, 2);
+World world(12, 4, 12);
 Texture texture(L"terrain");
 Camera camera(80, 1);
 
@@ -63,7 +63,7 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
-	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
+	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), basicShader);
 
 	texture.Create(m_deviceResources.get());
 
@@ -117,7 +117,7 @@ void Game::Render() {
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
-	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
 	basicShader->Apply(m_deviceResources.get());
 
 	// Prepare and send Constant Buffers (Model, View and Projection matrices) to Vertex Shader.

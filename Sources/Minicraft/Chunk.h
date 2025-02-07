@@ -39,7 +39,7 @@ private:
 	std::vector<BlockId> blocks;
 	World* world;
 
-	VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
+	VertexBuffer<VertexLayout_PositionNormalUV> vertexBuffer;
 	IndexBuffer indexBuffer;
 	Matrix modelMatrix;
 };
