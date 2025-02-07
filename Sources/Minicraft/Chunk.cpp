@@ -12,21 +12,7 @@ Chunk::Chunk(World* world, const int chunkX, const int chunkY, const int chunkZ)
 }
 
 void Chunk::GenerateBlocks() {
-	blocks.assign(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, TNT);
-
-	// Generate block data
-	for (int x = 0; x < CHUNK_SIZE; ++x) {
-		for (int y = 0; y < CHUNK_SIZE; ++y) {
-			for (int z = 0; z < CHUNK_SIZE; ++z) {
-				if (y < 6)
-					SetBlock(x, y, z, STONE);
-				else if (y >= 6 && y <= 9)
-					SetBlock(x, y, z, DIRT);
-				else if (y == 10)
-					SetBlock(x, y, z, GRASS);
-			}
-		}
-	}
+	blocks.assign(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, EMPTY);
 }
 
 void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
@@ -38,7 +24,7 @@ void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
 			}
 		}
 	}
-
+	
 	vertexBuffer.Create(deviceRes);
 	indexBuffer.Create(deviceRes);
 }

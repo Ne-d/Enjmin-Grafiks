@@ -8,7 +8,6 @@ World::World(const unsigned int sizeX, const unsigned int sizeY, const unsigned 
 	nbChunksZ(sizeZ) {
 }
 
-// TODO: Test this for the love of fuck
 BlockId* World::GetBlock(const int gx, const int gy, const int gz) {
 	// Check that coordinates are within bounds.
 	if (gx < 0 || gy < 0 || gz < 0 ||
@@ -23,11 +22,15 @@ BlockId* World::GetBlock(const int gx, const int gy, const int gz) {
 	auto* chunk = GetChunk(chunkX, chunkY, chunkZ);
 
 	// Find the coordinates of the block within the chunk
-	const int blockX = gx % CHUNK_SIZE;
-	const int blockY = gy % CHUNK_SIZE;
-	const int blockZ = gz % CHUNK_SIZE;
+	const int localX = gx % CHUNK_SIZE;
+	const int localY = gy % CHUNK_SIZE;
+	const int localZ = gz % CHUNK_SIZE;
 
-	return chunk->GetBlock(blockX, blockY, blockZ);
+	return chunk->GetBlock(localX, localY, localZ);
+}
+
+void World::SetBlock(const int gx, const int gy, const int gz, const BlockId block) {
+	*GetBlock(gx, gy, gz) = block;
 }
 
 Chunk* World::GetChunk(const int chunkX, const int chunkY, const int chunkZ) {
@@ -40,15 +43,42 @@ Chunk* World::GetChunk(const int chunkX, const int chunkY, const int chunkZ) {
 }
 
 void World::Generate(const DeviceResources* deviceRes) {
-	GenerateChunks(deviceRes);
+	InitializeChunks();
+	GenerateChunks();
+	GenerateCubes(deviceRes);
 
 	cbModelData.Create(deviceRes);
 }
 
-void World::GenerateChunks(const DeviceResources* deviceRes) {
-	// Generate chunks from world data
+void World::GenerateCubes(const DeviceResources* deviceRes) {
+	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
+		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
+			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
+				GetChunk(chunkX, chunkY, chunkZ)->GenerateCubes(deviceRes);
+			}
+		}
+	}
+}
 
+void World::GenerateChunks() {
+	// Generate block data
+	for (int x = 0; x < nbChunksX * CHUNK_SIZE; ++x) {
+		for (int y = 0; y < nbChunksY * CHUNK_SIZE; ++y) {
+			for (int z = 0; z < nbChunksZ * CHUNK_SIZE; ++z) {
+				constexpr int terrainHeight = 10;
 
+				if (y < terrainHeight - 4)
+					SetBlock(x, y, z, STONE);
+				else if (y >= terrainHeight - 4 && y <= terrainHeight - 1)
+					SetBlock(x, y, z, DIRT);
+				else if (y == terrainHeight)
+					SetBlock(x, y, z, GRASS);
+			}
+		}
+	}
+}
+
+void World::InitializeChunks() {
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
 		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
 			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
@@ -58,14 +88,6 @@ void World::GenerateChunks(const DeviceResources* deviceRes) {
 					chunkZ * CHUNK_SIZE)));
 
 				chunk.GenerateBlocks();
-			}
-		}
-	}
-
-	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
-		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
-			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
-				GetChunk(chunkX, chunkY, chunkZ)->GenerateCubes(deviceRes);
 			}
 		}
 	}

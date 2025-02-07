@@ -15,6 +15,11 @@ public:
 	}
 
 	void Create(const DeviceResources* deviceResources) {
+		if (data.size() == 0) {
+			std::cout << "VertexBuffer::Create: Cannot create buffer, data empty." << std::endl;
+			return;
+		}
+		
 		const CD3D11_BUFFER_DESC desc(sizeof(TVertex) * data.size(), D3D11_BIND_VERTEX_BUFFER);
 
 		D3D11_SUBRESOURCE_DATA dataInitial = {};
@@ -61,6 +66,11 @@ public:
 	}
 
 	void Create(const DeviceResources* deviceRes) {
+		if (indices.size() == 0) {
+			std::cout << "IndexBuffer::Create: Cannot create buffer, data empty." << std::endl;
+			return;
+		}
+		
 		const CD3D11_BUFFER_DESC desc(sizeof(uint32_t) * indices.size(), D3D11_BIND_INDEX_BUFFER);
 
 		D3D11_SUBRESOURCE_DATA dataInitial = {};
@@ -74,7 +84,7 @@ public:
 
 		if (result != S_OK) {
 			// TODO: Figure out some better way of handling errors and logging.
-			std::cerr << "Failed to create vertex buffer" << std::endl;
+			std::cerr << "IndexBuffer::Create: Failed to create index buffer" << std::endl;
 			exit(1);
 		}
 	}
