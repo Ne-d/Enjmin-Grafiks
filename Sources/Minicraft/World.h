@@ -26,7 +26,7 @@ private:
 	unsigned int nbChunksY;
 	unsigned int nbChunksZ;
 
-	std::vector<Chunk> chunks;
+	std::vector<std::vector<std::vector<Chunk>>> chunks;
 
 	struct ModelData {
 		Matrix modelMatrix;

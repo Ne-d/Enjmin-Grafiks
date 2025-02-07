@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "World.h"
 
+#include <PerlinNoise.hpp>
+
 World::World(const unsigned int sizeX, const unsigned int sizeY, const unsigned int sizeZ)
 	:
 	nbChunksX(sizeX),
@@ -9,9 +11,11 @@ World::World(const unsigned int sizeX, const unsigned int sizeY, const unsigned 
 }
 
 BlockId* World::GetBlock(const int gx, const int gy, const int gz) {
-	// Check that coordinates are within bounds.
+	// Check that coordinates are within world bounds.
 	if (gx < 0 || gy < 0 || gz < 0 ||
-		gx >= nbChunksX * CHUNK_SIZE || gy >= nbChunksY * CHUNK_SIZE || gz >= nbChunksZ * CHUNK_SIZE) {
+		gx >= nbChunksX * CHUNK_SIZE ||
+		gy >= nbChunksY * CHUNK_SIZE ||
+		gz >= nbChunksZ * CHUNK_SIZE) {
 		return nullptr;
 	}
 
@@ -39,7 +43,7 @@ Chunk* World::GetChunk(const int chunkX, const int chunkY, const int chunkZ) {
 		chunkZ < 0 || chunkZ >= nbChunksZ)
 		return nullptr;
 
-	return &chunks.at(chunkX + chunkY * nbChunksX + chunkZ * nbChunksX * nbChunksY);
+	return &(chunks.at(chunkX).at(chunkY).at(chunkZ));
 }
 
 void World::Generate(const DeviceResources* deviceRes) {
@@ -50,22 +54,33 @@ void World::Generate(const DeviceResources* deviceRes) {
 	cbModelData.Create(deviceRes);
 }
 
-void World::GenerateCubes(const DeviceResources* deviceRes) {
-	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
-		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
-			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
-				GetChunk(chunkX, chunkY, chunkZ)->GenerateCubes(deviceRes);
+void World::InitializeChunks() {
+	for (unsigned int chunkX = 0; chunkX < nbChunksX; chunkX++) {
+		chunks.push_back(std::vector<std::vector<Chunk>>());
+
+		for (unsigned int chunkY = 0; chunkY < nbChunksY; chunkY++) {
+			chunks.at(chunkX).push_back(std::vector<Chunk>());
+
+			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; chunkZ++) {
+				auto& chunk = chunks.at(chunkX).at(chunkY).emplace_back(this, chunkX, chunkY, chunkZ);
+
+				chunk.SetModelMatrix(Matrix::CreateTranslation(Vector3(chunkX * CHUNK_SIZE, chunkY * CHUNK_SIZE,
+					chunkZ * CHUNK_SIZE)));
+
+				chunk.GenerateBlocks();
 			}
 		}
 	}
 }
 
 void World::GenerateChunks() {
+	siv::BasicPerlinNoise<float> perlinNoise(69420);
+	
 	// Generate block data
 	for (int x = 0; x < nbChunksX * CHUNK_SIZE; ++x) {
 		for (int y = 0; y < nbChunksY * CHUNK_SIZE; ++y) {
 			for (int z = 0; z < nbChunksZ * CHUNK_SIZE; ++z) {
-				constexpr int terrainHeight = 10;
+				int terrainHeight = 10 + perlinNoise.octave2D_01(x, z, 2) * 5;
 
 				if (y < terrainHeight - 4)
 					SetBlock(x, y, z, STONE);
@@ -78,16 +93,11 @@ void World::GenerateChunks() {
 	}
 }
 
-void World::InitializeChunks() {
+void World::GenerateCubes(const DeviceResources* deviceRes) {
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
 		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
 			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
-				auto& chunk = chunks.emplace_back(this, chunkX, chunkY, chunkZ);
-
-				chunk.SetModelMatrix(Matrix::CreateTranslation(Vector3(chunkX * CHUNK_SIZE, chunkY * CHUNK_SIZE,
-					chunkZ * CHUNK_SIZE)));
-
-				chunk.GenerateBlocks();
+				GetChunk(chunkX, chunkY, chunkZ)->GenerateCubes(deviceRes);
 			}
 		}
 	}
@@ -96,8 +106,13 @@ void World::InitializeChunks() {
 void World::Draw(const DeviceResources* deviceRes) {
 	cbModelData.ApplyToVS(deviceRes, 0);
 
-	for (auto chunk : chunks) {
-		cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
-		chunk.Draw(deviceRes);
+	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
+		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
+			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
+				auto& chunk = chunks.at(chunkX).at(chunkY).at(chunkZ);
+				cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
+				chunk.Draw(deviceRes);
+			}
+		}
 	}
 }

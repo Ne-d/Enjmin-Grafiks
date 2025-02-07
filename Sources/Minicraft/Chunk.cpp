@@ -74,20 +74,22 @@ bool Chunk::IsFaceVisible(const Vector3 position, const Vector3 direction) {
 
 	const auto positionToCheck = position + direction;
 
-	BlockId* neighbour = nullptr;
+	BlockId* neighbour;
 
 	if (positionToCheck.x >= 0 && positionToCheck.x < CHUNK_SIZE &&
 		positionToCheck.y >= 0 && positionToCheck.y < CHUNK_SIZE &&
 		positionToCheck.z >= 0 && positionToCheck.z < CHUNK_SIZE) {
 		neighbour = GetBlock(positionToCheck.x, positionToCheck.y, positionToCheck.z);
 	}
-
-	// If the block is empty, the face is visible.
-	neighbour = world->GetBlock(
-		chunkX * CHUNK_SIZE + positionToCheck.x,
-		chunkY * CHUNK_SIZE + positionToCheck.y,
-		chunkZ * CHUNK_SIZE + positionToCheck.z
-	);
+	else {
+		// If the block is empty, the face is visible.
+		neighbour = world->GetBlock(
+			chunkX * CHUNK_SIZE + positionToCheck.x,
+			chunkY * CHUNK_SIZE + positionToCheck.y,
+			chunkZ * CHUNK_SIZE + positionToCheck.z
+		);
+	}
+	
 
 	if (neighbour == nullptr)
 		return true;
@@ -103,6 +105,7 @@ const Matrix& Chunk::GetModelMatrix() const {
 }
 
 BlockId* Chunk::GetBlock(const int x, const int y, const int z) {
+	// Check that coordinates are within chunk bounds.
 	if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE)
 		return nullptr;
 
@@ -120,9 +123,12 @@ void Chunk::SetModelMatrix(const Matrix& modelMatrix) {
 void Chunk::Draw(const DeviceResources* deviceRes) const {
 	if (blocks.size() == 0)
 		return;
-	
-	vertexBuffer.Apply(deviceRes);
-	indexBuffer.Apply(deviceRes);
+
+	if (vertexBuffer.Size() > 0)
+		vertexBuffer.Apply(deviceRes);
+
+	if (indexBuffer.Size() > 0)
+		indexBuffer.Apply(deviceRes);
 
 	deviceRes->GetD3DDeviceContext()->DrawIndexed(indexBuffer.Size(), 0, 0);
 }

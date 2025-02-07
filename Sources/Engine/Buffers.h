@@ -14,6 +14,10 @@ public:
 		return data.size() - 1;
 	}
 
+	[[nodiscard]] size_t Size() const {
+		return data.size();
+	}
+
 	void Create(const DeviceResources* deviceResources) {
 		if (data.size() == 0) {
 			std::cout << "VertexBuffer::Create: Cannot create buffer, data empty." << std::endl;
@@ -88,7 +92,7 @@ public:
 			exit(1);
 		}
 	}
-
+	
 	void Apply(const DeviceResources* deviceRes) const {
 		assert(buffer.Get() != nullptr);
 		deviceRes->GetD3DDeviceContext()->IASetIndexBuffer(buffer.Get(), DXGI_FORMAT_R32_UINT, 0);
