@@ -3,6 +3,8 @@
 
 #include <PerlinNoise.hpp>
 
+#include "Engine/Camera.h"
+
 World::World(const unsigned int sizeX, const unsigned int sizeY, const unsigned int sizeZ)
 	:
 	nbChunksX(sizeX),
@@ -66,8 +68,6 @@ void World::InitializeChunks() {
 
 				chunk.SetModelMatrix(Matrix::CreateTranslation(Vector3(chunkX * CHUNK_SIZE, chunkY * CHUNK_SIZE,
 					chunkZ * CHUNK_SIZE)));
-
-				chunk.GenerateBlocks();
 			}
 		}
 	}
@@ -84,8 +84,8 @@ void World::GenerateChunks() {
 				const auto fy = (float)y;
 				const auto fz = (float)z;
 
-				constexpr float bigNoiseScale = 50;
-				constexpr float bigNoiseAmplitude = 35;
+				constexpr float bigNoiseScale = 80;
+				constexpr float bigNoiseAmplitude = 80;
 				constexpr float bigNoiseOffsetX = 0;
 				constexpr float bigNoiseOffsetY = 0;
 
@@ -94,7 +94,7 @@ void World::GenerateChunks() {
 				constexpr float mediumNoiseOffsetX = 69;
 				constexpr float mediumNoiseOffsetY = 420;
 
-				constexpr float smallNoiseScale = 8;
+				constexpr float smallNoiseScale = 5;
 				constexpr float smallNoiseAmplitude = 2;
 				constexpr float smallNoiseOffsetX = 42;
 				constexpr float smallNoiseOffsetY = 69420;
@@ -104,12 +104,12 @@ void World::GenerateChunks() {
 						fz / bigNoiseScale + bigNoiseOffsetY, 1) * bigNoiseAmplitude
 
 					+ perlinNoise.octave2D_01(fx / mediumNoiseScale + mediumNoiseOffsetX,
-						fz / mediumNoiseScale + mediumNoiseOffsetY, 2) * mediumNoiseAmplitude
+						fz / mediumNoiseScale + mediumNoiseOffsetY, 1) * mediumNoiseAmplitude
 
 					+ perlinNoise.octave2D_01(fx / smallNoiseScale + smallNoiseOffsetX,
-						fz / smallNoiseScale + smallNoiseOffsetY, 3) * smallNoiseAmplitude;
+						fz / smallNoiseScale + smallNoiseOffsetY, 1) * smallNoiseAmplitude;
 
-				constexpr int waterHeight = 28;
+				constexpr int waterHeight = 48;
 				constexpr int sandHeightDelta = 1;
 
 				if (y < waterHeight)
@@ -139,16 +139,45 @@ void World::GenerateCubes(const DeviceResources* deviceRes) {
 	}
 }
 
-void World::Draw(const DeviceResources* deviceRes, RenderPass renderPass) {
+void World::Draw(Camera* camera, const DeviceResources* deviceRes, RenderPass renderPass) {
 	cbModelData.ApplyToVS(deviceRes, 0);
 	
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
 		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
 			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
 				auto& chunk = chunks.at(chunkX).at(chunkY).at(chunkZ);
-				cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
-				chunk.Draw(deviceRes, renderPass);
+
+				if (chunk.needRegen)
+					chunk.GenerateCubes(deviceRes);
+
+				if (chunk.bounds.Intersects(camera->frustum)) {
+					cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
+					chunk.Draw(deviceRes, renderPass);
+				}
 			}
 		}
 	}
+
+	cbModelData.UpdateBuffer(deviceRes, { Matrix::Identity });
+}
+
+void World::UpdateBlock(const int gx, const int gy, const int gz, const BlockId newBlock) {
+	auto* block = GetBlock(gx, gy, gz);
+	if (block == nullptr)
+		return;
+	*block = newBlock;
+
+	MakeChunkDirty(gx, gy, gz);
+	MakeChunkDirty(gx + 1, gy, gz);
+	MakeChunkDirty(gx - 1, gy, gz);
+	MakeChunkDirty(gx, gy + 1, gz);
+	MakeChunkDirty(gx, gy - 1, gz);
+	MakeChunkDirty(gx, gy, gz + 1);
+	MakeChunkDirty(gx, gy, gz - 1);
+}
+
+void World::MakeChunkDirty(int gx, int gy, int gz) {
+	auto* chunk = GetChunk(gx, gy, gz);
+	if (chunk != nullptr)
+		chunk->needRegen = true;
 }

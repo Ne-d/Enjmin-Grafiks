@@ -5,15 +5,12 @@
 #include "pch.h"
 #include "Game.h"
 
-#include <iostream>
-#include <array>
-
 #include "Engine/BlendState.h"
 #include "Engine/DepthState.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
-#include "Minicraft/Camera.h"
+#include "Minicraft/Player.h"
 #include "Minicraft/World.h"
 
 extern void ExitGame() noexcept;
@@ -24,9 +21,9 @@ using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
 
 // Global stuff
-Shader* opaqueShader;
-Shader* transparentShader;
-Shader* waterShader;
+Shader opaqueShader(L"Basic");
+Shader transparentShader(L"Water");
+Shader waterShader(L"Water");
 
 BlendState blendStateOpaque;
 BlendState blendStateTransparent(D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD,
@@ -37,46 +34,9 @@ DepthState depthStateTransparent(true, false);
 
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world(8, 4, 8);
+World world(16, 8, 16);
 Texture texture(L"terrain");
-Camera camera(80, 1);
-
-float sign(float v) {
-	if (v < 0)
-		return -1;
-	return 1;
-}
-
-std::vector<std::array<int, 3>> Raycast(const Vector3 pos, const Vector3 dir, const float maxDistance) {
-	std::map<float, std::array<int, 3>> cubes;
-
-	if (dir.x != 0) {
-		const float deltaYX = dir.y / dir.x;
-		const float deltaZX = dir.z / dir.x;
-		const float offsetYX = pos.y - pos.x * deltaYX;
-		const float offsetZX = pos.z - pos.x * deltaZX;
-
-		const float cubeX = (dir.x > 0) ? ceil(pos.x) : floor(pos.x);
-		do {
-			Vector3 const collisionPos(cubeX, deltaYX * cubeX + offsetYX, deltaZX * cubeX + offsetZX);
-			const float distance = Vector3::Distance(pos, collisionPos);
-
-			if (distance > maxDistance)
-				break;
-
-			cubes[distance] = {
-				(int)floor(cubeX - ((dir.x < 0) ? 1 : 0)),
-				(int)floor(collisionPos.y),
-				(int)floor(collisionPos.z)
-			};
-		}
-		while (true);
-	}
-
-	std::vector<std::array<int, 3>> res;
-	std::transform(cubes.begin(), cubes.end(), std::back_inserter(res), [](auto& v) { return v.second; });
-	return res;
-}
+Player player(&world, Vector3(16, 64, 16));
 
 // Game
 Game::Game() noexcept(false) {
@@ -86,10 +46,6 @@ Game::Game() noexcept(false) {
 }
 
 Game::~Game() {
-	delete opaqueShader;
-	delete transparentShader;
-	delete waterShader;
-	
 	g_inputLayouts.clear();
 }
 
@@ -99,30 +55,27 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	m_keyboard = std::make_unique<Keyboard>();
 	m_mouse = std::make_unique<Mouse>();
 	m_mouse->SetWindow(window);
+	m_mouse->SetMode(Mouse::MODE_RELATIVE);
 
 	// Initialize the Direct3D resources
 	m_deviceResources->SetWindow(window, width, height);
 	m_deviceResources->CreateDeviceResources();
 	m_deviceResources->CreateWindowSizeDependentResources();
 
-
-	opaqueShader = new Shader(L"Basic");
-	opaqueShader->Create(m_deviceResources.get());
-	transparentShader = new Shader(L"Basic");
-	transparentShader->Create(m_deviceResources.get());
-	waterShader = new Shader(L"Water");
-	waterShader->Create(m_deviceResources.get());
+	opaqueShader.Create(m_deviceResources.get());
+	transparentShader.Create(m_deviceResources.get());
+	waterShader.Create(m_deviceResources.get());
 
 	blendStateOpaque.Create(m_deviceResources.get());
 	blendStateTransparent.Create(m_deviceResources.get());
 	depthStateOpaque.Create(m_deviceResources.get());
 	depthStateTransparent.Create(m_deviceResources.get());
 
-	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), opaqueShader);
+	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &opaqueShader);
 
 	texture.Create(m_deviceResources.get());
 
-	camera.UpdateAspectRatio((float)width / (float)height);
+	player.GetCamera()->UpdateAspectRatio((float)width / (float)height);
 
 	world.Generate(m_deviceResources.get());
 }
@@ -138,9 +91,10 @@ void Game::Tick() {
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
+	auto const ms = m_mouse->GetState();
 	
 	// add kb/mouse interact here
-	camera.Update(timer.GetElapsedSeconds(), kb, m_mouse.get());
+	player.Update(timer.GetElapsedSeconds(), kb, ms);
 	
 	if (kb.Escape)
 		ExitGame();
@@ -169,25 +123,24 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
-	opaqueShader->Apply(m_deviceResources.get());
 	
 	texture.Apply(m_deviceResources.get());
-	camera.Apply(m_deviceResources.get());
+	player.GetCamera()->Apply(m_deviceResources.get());
 
 	// Opaque render pass
 	blendStateOpaque.Apply(m_deviceResources.get());
 	depthStateOpaque.Apply(m_deviceResources.get());
-	opaqueShader->Apply(m_deviceResources.get());
-	world.Draw(m_deviceResources.get(), RenderPass_Opaque);
+	opaqueShader.Apply(m_deviceResources.get());
+	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Opaque);
 
 	// Transparent render pass
 	blendStateTransparent.Apply(m_deviceResources.get());
 	depthStateTransparent.Apply(m_deviceResources.get());
-	transparentShader->Apply(m_deviceResources.get());
-	world.Draw(m_deviceResources.get(), RenderPass_Transparent);
+	transparentShader.Apply(m_deviceResources.get());
+	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Transparent);
 
-	waterShader->Apply(m_deviceResources.get());
-	world.Draw(m_deviceResources.get(), RenderPass_Water);
+	waterShader.Apply(m_deviceResources.get());
+	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Water);
 	
 	m_deviceResources->Present();
 }
@@ -217,7 +170,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
-	camera.UpdateAspectRatio((float)width / (float)height);
+	player.GetCamera()->UpdateAspectRatio((float)width / (float)height);
 	
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post-processing, etc.)

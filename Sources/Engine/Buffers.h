@@ -18,7 +18,15 @@ public:
 		return data.size();
 	}
 
+	void Clear() {
+		data.clear();
+	}
+
 	void Create(const DeviceResources* deviceResources) {
+		buffer.Reset();
+		if (data.size() == 0)
+			return;
+		
 		const CD3D11_BUFFER_DESC desc(sizeof(TVertex) * data.size(), D3D11_BIND_VERTEX_BUFFER);
 
 		D3D11_SUBRESOURCE_DATA dataInitial = {};
@@ -27,7 +35,7 @@ public:
 		const HRESULT result = deviceResources->GetD3DDevice()->CreateBuffer(
 			&desc,
 			&dataInitial,
-			buffer.ReleaseAndGetAddressOf()
+			buffer.GetAddressOf()
 		);
 
 		if (result != S_OK) {
@@ -64,7 +72,15 @@ public:
 		return indices.size();
 	}
 
+	void Clear() {
+		indices.clear();
+	}
+
 	void Create(const DeviceResources* deviceRes) {
+		buffer.Reset();
+		if (indices.size() == 0)
+			return;
+		
 		const CD3D11_BUFFER_DESC desc(sizeof(uint32_t) * indices.size(), D3D11_BIND_INDEX_BUFFER);
 
 		D3D11_SUBRESOURCE_DATA dataInitial = {};
@@ -73,7 +89,7 @@ public:
 		const HRESULT result = deviceRes->GetD3DDevice()->CreateBuffer(
 			&desc,
 			&dataInitial,
-			buffer.ReleaseAndGetAddressOf()
+			buffer.GetAddressOf()
 		);
 
 		if (result != S_OK) {

@@ -12,8 +12,7 @@ class World;
 class Chunk {
 public:
 	explicit Chunk(World* world, int chunkX, int chunkY, int chunkZ);
-
-	void GenerateBlocks();
+	
 	void GenerateCubes(const DeviceResources* deviceRes);
 
 	[[nodiscard]] BlockId* GetBlock(int x, int y, int z);
@@ -24,11 +23,15 @@ public:
 
 	void Draw(const DeviceResources* deviceRes, const RenderPass& renderPass) const;
 
+	// Data
+	DirectX::BoundingBox bounds;
+	bool needRegen = false;
+
 private:
 	// Methods
 	void PushFace(Vector3 position, Vector3 up, Vector3 right, Vector2 uv,
 				  RenderPass renderPass);
-	void GenerateCube(Vector3 position, BlockId blockId);
+	void PushCube(Vector3 position, BlockId blockId);
 
 	bool IsFaceVisible(Vector3 position, Vector3 direction);
 
@@ -36,6 +39,13 @@ private:
 	int chunkX;
 	int chunkY;
 	int chunkZ;
+
+	Chunk* adjXPos = nullptr;
+	Chunk* adjXNeg = nullptr;
+	Chunk* adjYPos = nullptr;
+	Chunk* adjYNeg = nullptr;
+	Chunk* adjZPos = nullptr;
+	Chunk* adjZNeg = nullptr;
 
 	std::vector<BlockId> blocks;
 	World* world;

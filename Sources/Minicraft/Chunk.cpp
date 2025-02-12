@@ -2,16 +2,22 @@
 #include "Chunk.h"
 #include "World.h"
 
+
+Vector4 ToVec4(const Vector3& v) {
+	return Vector4(v.x, v.y, v.z, 1.0f);
+}
+
 Chunk::Chunk(World* world, const int chunkX, const int chunkY, const int chunkZ)
 	:
 	chunkX(chunkX),
 	chunkY(chunkY),
 	chunkZ(chunkZ),
 	world(world),
-	modelMatrix(Matrix::CreateTranslation(Vector3(chunkX, chunkY, chunkZ))) {
-}
-
-void Chunk::GenerateBlocks() {
+	modelMatrix(Matrix::CreateTranslation(Vector3(chunkX, chunkY, chunkZ))),
+	bounds(DirectX::BoundingBox(
+			Vector3(chunkX, chunkY, chunkZ) + Vector3(CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5),
+			Vector3(CHUNK_SIZE / 2, CHUNK_SIZE / 2, CHUNK_SIZE / 2))
+	) {
 	blocks.assign(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, EMPTY);
 }
 
@@ -23,18 +29,17 @@ void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
 	for (int x = 0; x < CHUNK_SIZE; ++x) {
 		for (int y = 0; y < CHUNK_SIZE; ++y) {
 			for (int z = 0; z < CHUNK_SIZE; ++z) {
-				GenerateCube(Vector3(x, y, z), *GetBlock(x, y, z));
+				PushCube(Vector3(x, y, z), *GetBlock(x, y, z));
 			}
 		}
 	}
 
 	for (int i = 0; i < RenderPass_Count; ++i) {
-		if (vertexBuffers.at(i).Size() > 0)
-			vertexBuffers.at(i).Create(deviceRes);
-
-		if (indexBuffers.at(i).Size() > 0)
-			indexBuffers.at(i).Create(deviceRes);
+		vertexBuffers.at(i).Create(deviceRes);
+		indexBuffers.at(i).Create(deviceRes);
 	}
+
+	needRegen = false;
 }
 
 
@@ -46,7 +51,7 @@ Vector2 GetUvFromTexId(const int texId) {
 	);
 }
 
-void Chunk::GenerateCube(const Vector3 position, const BlockId blockId) {
+void Chunk::PushCube(const Vector3 position, const BlockId blockId) {
 	if (blockId == EMPTY)
 		return;
 	
