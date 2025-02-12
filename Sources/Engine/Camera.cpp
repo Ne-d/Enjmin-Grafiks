@@ -63,6 +63,18 @@ PerspectiveCamera::PerspectiveCamera(const float fov, const float aspectRatio)
 	projection = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(fov), aspectRatio, nearPlane, farPlane);
 }
 
-void PerspectiveCamera::UpdateAspectRatio(float aspectRatio) {
+void PerspectiveCamera::UpdateAspectRatio(const float aspectRatio) {
 	projection = Matrix::CreatePerspectiveFieldOfView(XMConvertToRadians(fov), aspectRatio, nearPlane, farPlane);
 }
+
+OrthographicCamera::OrthographicCamera(const float width, const float height)
+	:
+	width(width),
+	height(height) {
+	UpdateSize(width, height);
+}
+
+void OrthographicCamera::UpdateSize(const float width, const float height) {
+	projection = Matrix::CreateOrthographic(width, height, nearPlane, farPlane);
+}
+

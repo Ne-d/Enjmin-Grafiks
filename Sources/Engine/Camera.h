@@ -56,3 +56,14 @@ public:
 private:
 	float fov;
 };
+
+class OrthographicCamera : public Camera {
+public:
+	OrthographicCamera(float width, float height);
+
+	void UpdateSize(float width, float height);
+
+private:
+	float width;
+	float height;
+}
