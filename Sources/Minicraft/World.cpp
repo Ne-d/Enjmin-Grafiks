@@ -4,6 +4,7 @@
 #include <PerlinNoise.hpp>
 
 #include "Engine/Camera.h"
+#include "Engine/DefaultResources.h"
 
 World::World(const unsigned int sizeX, const unsigned int sizeY, const unsigned int sizeZ)
 	:
@@ -50,10 +51,8 @@ Chunk* World::GetChunk(const int chunkX, const int chunkY, const int chunkZ) {
 
 void World::Generate(const DeviceResources* deviceRes) {
 	InitializeChunks();
-	GenerateChunks();
+	GenerateChunks(deviceRes);
 	GenerateCubes(deviceRes);
-
-	cbModelData.Create(deviceRes);
 }
 
 void World::InitializeChunks() {
@@ -73,7 +72,7 @@ void World::InitializeChunks() {
 	}
 }
 
-void World::GenerateChunks() {
+void World::GenerateChunks(const DeviceResources* deviceRes) {
 	siv::BasicPerlinNoise<float> perlinNoise((int)'*');
 	
 	// Generate block data
@@ -127,6 +126,8 @@ void World::GenerateChunks() {
 			}
 		}
 	}
+
+	DefaultResources::Get()->cbModel.Create(deviceRes);
 }
 
 void World::GenerateCubes(const DeviceResources* deviceRes) {
@@ -140,7 +141,7 @@ void World::GenerateCubes(const DeviceResources* deviceRes) {
 }
 
 void World::Draw(const Camera* camera, const DeviceResources* deviceRes, const RenderPass renderPass) {
-	cbModelData.ApplyToVS(deviceRes, 0);
+	DefaultResources::Get()->cbModel.ApplyToVS(deviceRes, 0);
 	
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
 		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
@@ -151,14 +152,14 @@ void World::Draw(const Camera* camera, const DeviceResources* deviceRes, const R
 					chunk.GenerateCubes(deviceRes);
 
 				if (chunk.bounds.Intersects(camera->frustum)) {
-					cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
+					DefaultResources::Get()->cbModel.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
 					chunk.Draw(deviceRes, renderPass);
 				}
 			}
 		}
 	}
 
-	cbModelData.UpdateBuffer(deviceRes, { Matrix::Identity });
+	DefaultResources::Get()->cbModel.UpdateBuffer(deviceRes, { Matrix::Identity });
 }
 
 void World::UpdateBlock(const int gx, const int gy, const int gz, const BlockId newBlock) {

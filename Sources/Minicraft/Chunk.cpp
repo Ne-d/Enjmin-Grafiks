@@ -2,11 +2,6 @@
 #include "Chunk.h"
 #include "World.h"
 
-
-Vector4 ToVec4(const Vector3& v) {
-	return Vector4(v.x, v.y, v.z, 1.0f);
-}
-
 Chunk::Chunk(World* world, const int chunkX, const int chunkY, const int chunkZ)
 	:
 	chunkX(chunkX),

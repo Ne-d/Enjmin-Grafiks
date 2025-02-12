@@ -24,7 +24,7 @@ public:
 private:
 	// Methods
 	void InitializeChunks();
-	void GenerateChunks();
+	void GenerateChunks(const DeviceResources* deviceRes);
 	void GenerateChunk(const DeviceResources* deviceRes, unsigned int chunkX, unsigned int chunkY, unsigned int chunkZ);
 
 	// Data
@@ -33,10 +33,4 @@ private:
 	unsigned int nbChunksZ;
 
 	std::vector<std::vector<std::vector<Chunk>>> chunks;
-
-	struct ModelData {
-		Matrix modelMatrix;
-	};
-
-	ConstantBuffer<ModelData> cbModelData;
 };

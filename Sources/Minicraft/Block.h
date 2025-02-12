@@ -2,7 +2,6 @@
 
 enum RenderPass : uint8_t {
 	RenderPass_Opaque = 0,
-	RenderPass_Transparent,
 	RenderPass_Water,
 	RenderPass_Count
 };
@@ -43,11 +42,13 @@ enum RenderPass : uint8_t {
 	F( FURNACE,				44, 62, 62 ) /* need an orientation & on/off flag */ \
 	F( DISPENSER,			46, 62, 62 ) /* need an orientation flag */ \
 /* TRANSPARENT STUFF */ \
-	F( GLASS,				49, true, RenderPass_Transparent ) \
+	F( GLASS,				49, true ) \
 	F( WATER,				205, true, RenderPass_Water ) \
-/* 38, 39 & 40 contains greyscale grass for biome variation */
-/* as an exercice you can try to implement that by adding back some vertex color informations to the pipeline */
-/* 52, 53 contains greyscale leaves */
+/* 38, 39 & 40 contains greyscale grass for biome variation */ \
+/* as an exercice you can try to implement that by adding back some vertex color information to the pipeline */ \
+/* 52, 53 contains greyscale leaves */ \
+	F( HIGHLIGHT, 180 ) \
+	F( COUNT, - 1 )
 
 #define EXTRACT_BLOCK_ID( v ) v,
 
@@ -66,6 +67,7 @@ public:
 	// temporary, should be replaced by a flag system
 	bool transparent;
 
+	// We should add a flag system (wink wink)
 	RenderPass renderPass;
 
 public:

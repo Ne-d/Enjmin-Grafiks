@@ -1,36 +1,28 @@
-// Buffer 0
-cbuffer ModelData: register(b0) {
-	float4x4 model;
-};
-
-// Buffer 1
-cbuffer CameraData: register(b1) {
-	float4x4 view;
-	float4x4 projection;
-}
-
-// Must correspond to the input layout
 struct Input {
-	float4 pos : POSITION0;
-	float4 normal : NORMAL0;
-	float2 uv : TEXCOORD0;
+    float4 pos : POSITION0;
+    float4 color : COLOR0;
 };
 
-// Must correspond to the pixel shader's input
+cbuffer ModelData : register(b0) {
+    float4x4 Model;
+};
+cbuffer CameraData : register(b1) {
+    float4x4 View;
+    float4x4 Projection;
+};
+
 struct Output {
-	float4 pos : SV_POSITION;
-	float4 normal : NORMAL0;
-	float2 uv : TEXCOORD0;
+    float4 pos : SV_POSITION;
+    float4 color : COLOR0;
 };
 
 Output main(Input input) {
-	Output output;
+	Output output = (Output)0;
 
-	output.pos = mul(input.pos, model);
-	output.pos = mul(output.pos, view);
-	output.pos = mul(output.pos, projection);
-	output.normal = input.normal;
-	output.uv = input.uv;
+    output.pos = mul(input.pos, Model);
+    output.pos = mul(output.pos, View);
+    output.pos = mul(output.pos, Projection);
+    output.color = input.color;
 
 	return output;
 }

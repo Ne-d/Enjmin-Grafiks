@@ -1,14 +1,9 @@
 ﻿#include "pch.h"
 
+#include "Utils.h"
+
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
-
-float sign(const float v) {
-	if (v < 0)
-		return -1;
-
-	return 1;
-}
 
 std::vector<std::array<int, 3>> Raycast(const Vector3 position, const Vector3 direction, const float maxDistance) {
 	std::map<float, std::array<int, 3>> cubes;

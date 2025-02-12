@@ -66,4 +66,4 @@ public:
 private:
 	float width;
 	float height;
-}
+};

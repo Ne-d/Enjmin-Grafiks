@@ -6,6 +6,7 @@
 #include "Game.h"
 
 #include "Engine/BlendState.h"
+#include "Engine/DefaultResources.h"
 #include "Engine/DepthState.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
@@ -21,9 +22,11 @@ using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
 
 // Global stuff
-Shader opaqueShader(L"Basic");
-Shader transparentShader(L"Water");
+DefaultResources gpuResources;
+Shader opaqueShader(L"Block");
 Shader waterShader(L"Water");
+Shader basicShader(L"Basic");
+VertexBuffer<VertexLayout_PositionColor> crosshairVertexBuffer;
 
 BlendState blendStateOpaque;
 BlendState blendStateTransparent(D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD,
@@ -34,9 +37,10 @@ DepthState depthStateTransparent(true, false);
 
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world(8, 4, 8);
+World world(8, 6, 8);
 Texture texture(L"terrain");
 Player player(&world, Vector3(16, 64, 16));
+OrthographicCamera hudCamera(400, 600);
 
 // Game
 Game::Game() noexcept(false) {
@@ -62,9 +66,11 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	m_deviceResources->CreateDeviceResources();
 	m_deviceResources->CreateWindowSizeDependentResources();
 
+	gpuResources.Create(m_deviceResources.get());
+	
 	opaqueShader.Create(m_deviceResources.get());
-	transparentShader.Create(m_deviceResources.get());
 	waterShader.Create(m_deviceResources.get());
+	basicShader.Create(m_deviceResources.get());
 
 	blendStateOpaque.Create(m_deviceResources.get());
 	blendStateTransparent.Create(m_deviceResources.get());
@@ -72,12 +78,20 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	depthStateTransparent.Create(m_deviceResources.get());
 
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &opaqueShader);
+	GenerateInputLayout<VertexLayout_PositionColor>(m_deviceResources.get(), &basicShader);
 
 	texture.Create(m_deviceResources.get());
 
 	player.GetCamera()->UpdateAspectRatio((float)width / (float)height);
+	hudCamera.UpdateSize((float)width, (float)height);
 
 	world.Generate(m_deviceResources.get());
+
+	crosshairVertexBuffer.PushVertex({ { -7, 0, 1, 1 }, { 1, 1, 1, 1 } });
+	crosshairVertexBuffer.PushVertex({ { 6, 0, 1, 1 }, { 1, 1, 1, 1 } });
+	crosshairVertexBuffer.PushVertex({ { 0, -6, 1, 1 }, { 1, 1, 1, 1 } });
+	crosshairVertexBuffer.PushVertex({ { 0, 7, 1, 1 }, { 1, 1, 1, 1 } });
+	crosshairVertexBuffer.Create(m_deviceResources.get());
 }
 
 void Game::Tick() {
@@ -92,8 +106,8 @@ void Game::Tick() {
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
 	auto const ms = m_mouse->GetState();
+	m_mouse->ResetScrollWheelValue();
 	
-	// add kb/mouse interact here
 	player.Update(timer.GetElapsedSeconds(), kb, ms);
 	
 	if (kb.Escape)
@@ -132,15 +146,23 @@ void Game::Render() {
 	depthStateOpaque.Apply(m_deviceResources.get());
 	opaqueShader.Apply(m_deviceResources.get());
 	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Opaque);
+	player.Draw(m_deviceResources.get());
 
-	// Transparent render pass
+	// Water Render Pass
 	blendStateTransparent.Apply(m_deviceResources.get());
 	depthStateTransparent.Apply(m_deviceResources.get());
-	transparentShader.Apply(m_deviceResources.get());
-	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Transparent);
-
 	waterShader.Apply(m_deviceResources.get());
 	world.Draw(player.GetCamera(), m_deviceResources.get(), RenderPass_Water);
+
+	// HUD render pass
+	blendStateOpaque.Apply(m_deviceResources.get());
+	depthStateOpaque.Apply(m_deviceResources.get());
+	hudCamera.Apply(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionColor>(m_deviceResources.get());
+	basicShader.Apply(m_deviceResources.get());
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	crosshairVertexBuffer.Apply(m_deviceResources.get());
+	context->Draw(4, 0);
 	
 	m_deviceResources->Present();
 }
@@ -171,6 +193,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 		return;
 
 	player.GetCamera()->UpdateAspectRatio((float)width / (float)height);
+	hudCamera.UpdateSize((float)width, (float)height);
 	
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post-processing, etc.)
