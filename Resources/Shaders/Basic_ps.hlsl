@@ -8,12 +8,14 @@ struct Input {
 };
 
 float4 main(Input input) : SV_TARGET {
-    float3 lightDir = float3(1, 1, 1);
-    lightDir = normalize(lightDir);
-    float4 lightDir4 = float4(lightDir, 1.0);
-
-    float4 lightReflect = reflect(lightDir4, input.normal);
-
     float4 color = tex.Sample(samplerState, input.uv);
-    return saturate((0.5 + dot(input.normal, lightDir4) * 0.5) * color);
+
+    clip(color.a < 0.1 ? -1 : 1);
+
+    float4 lightDirReflected = float4(1, 1, 1, 0);
+    float NdotL = saturate(dot(input.normal, lightDirReflected));
+
+    color.rgb = color.rgb * (0.5 + NdotL * 0.5);
+    
+    return color;
 }
