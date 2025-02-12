@@ -14,7 +14,7 @@ public:
 	
 	void Generate(const DeviceResources* deviceRes);
 	void GenerateCubes(const DeviceResources* deviceRes);
-	void Draw(Camera* camera, const DeviceResources* deviceRes, RenderPass renderPass);
+	void Draw(const Camera* camera, const DeviceResources* deviceRes, RenderPass renderPass);
 
 	void UpdateBlock(int gx, int gy, int gz, BlockId newBlock);
 	void MakeChunkDirty(int gx, int gy, int gz);

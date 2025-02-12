@@ -34,7 +34,7 @@ DepthState depthStateTransparent(true, false);
 
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world(16, 8, 16);
+World world(8, 4, 8);
 Texture texture(L"terrain");
 Player player(&world, Vector3(16, 64, 16));
 

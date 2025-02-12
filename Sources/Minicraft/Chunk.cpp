@@ -13,12 +13,13 @@ Chunk::Chunk(World* world, const int chunkX, const int chunkY, const int chunkZ)
 	chunkY(chunkY),
 	chunkZ(chunkZ),
 	world(world),
-	modelMatrix(Matrix::CreateTranslation(Vector3(chunkX, chunkY, chunkZ))),
-	bounds(DirectX::BoundingBox(
-			Vector3(chunkX, chunkY, chunkZ) + Vector3(CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5),
-			Vector3(CHUNK_SIZE / 2, CHUNK_SIZE / 2, CHUNK_SIZE / 2))
-	) {
+	modelMatrix(Matrix::CreateTranslation(Vector3(chunkX, chunkY, chunkZ))) {
 	blocks.assign(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE, EMPTY);
+	bounds = DirectX::BoundingBox(
+		Vector3(chunkX * CHUNK_SIZE, chunkY * CHUNK_SIZE, chunkZ * CHUNK_SIZE) +
+		Vector3(CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5, CHUNK_SIZE / 2 - 0.5),
+		Vector3(CHUNK_SIZE / 2, CHUNK_SIZE / 2, CHUNK_SIZE / 2)
+	);
 }
 
 void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
@@ -135,9 +136,6 @@ void Chunk::SetModelMatrix(const Matrix& modelMatrix) {
 }
 
 void Chunk::Draw(const DeviceResources* deviceRes, const RenderPass& renderPass) const {
-	if (blocks.size() == 0)
-		return;
-
 	if (vertexBuffers.at(renderPass).Size() > 0)
 		vertexBuffers.at(renderPass).Apply(deviceRes);
 

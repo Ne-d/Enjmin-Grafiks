@@ -139,7 +139,7 @@ void World::GenerateCubes(const DeviceResources* deviceRes) {
 	}
 }
 
-void World::Draw(Camera* camera, const DeviceResources* deviceRes, RenderPass renderPass) {
+void World::Draw(const Camera* camera, const DeviceResources* deviceRes, const RenderPass renderPass) {
 	cbModelData.ApplyToVS(deviceRes, 0);
 	
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {

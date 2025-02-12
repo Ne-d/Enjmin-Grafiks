@@ -7,6 +7,7 @@ using namespace DirectX::SimpleMath;
 Camera::Camera()
 	:
 	view(Matrix::CreateLookAt(position, position + Vector3::Forward, Vector3::Up)) {
+	UpdateViewMatrix();
 }
 
 Camera::~Camera() {
@@ -35,8 +36,8 @@ Vector3 Camera::Up() const { return Vector3::TransformNormal(Vector3::Up, view.I
 Vector3 Camera::Right() const { return Vector3::TransformNormal(Vector3::Right, view.Invert()); }
 
 void Camera::UpdateViewMatrix() {
-	Vector3 newForward = Vector3::Transform(Vector3::Forward, rotation);
-	Vector3 newUp = Vector3::Transform(Vector3::Up, rotation);
+	const Vector3 newForward = Vector3::Transform(Vector3::Forward, rotation);
+	const Vector3 newUp = Vector3::Transform(Vector3::Up, rotation);
 
 	view = Matrix::CreateLookAt(position, position + newForward, newUp);
 
