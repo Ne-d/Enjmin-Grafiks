@@ -136,12 +136,11 @@ void Chunk::SetModelMatrix(const Matrix& modelMatrix) {
 }
 
 void Chunk::Draw(const DeviceResources* deviceRes, const RenderPass& renderPass) const {
-	if (vertexBuffers.at(renderPass).Size() > 0)
-		vertexBuffers.at(renderPass).Apply(deviceRes);
+	if (vertexBuffers.at(renderPass).Size() == 0 || indexBuffers.at(renderPass).Size() == 0)
+		return;
 
-	if (indexBuffers.at(renderPass).Size() > 0)
-		indexBuffers.at(renderPass).Apply(deviceRes);
-
+	vertexBuffers.at(renderPass).Apply(deviceRes);
+	indexBuffers.at(renderPass).Apply(deviceRes);
 	deviceRes->GetD3DDeviceContext()->DrawIndexed(indexBuffers.at(renderPass).Size(), 0, 0);
 }
 
