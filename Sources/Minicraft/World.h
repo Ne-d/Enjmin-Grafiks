@@ -13,7 +13,7 @@ public:
 	
 	void Generate(const DeviceResources* deviceRes);
 	void GenerateCubes(const DeviceResources* deviceRes);
-	void Draw(const DeviceResources* deviceRes);
+	void Draw(const DeviceResources* deviceRes, RenderPass renderPass);
 
 private:
 	// Methods

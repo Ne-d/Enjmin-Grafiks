@@ -16,6 +16,9 @@ void Chunk::GenerateBlocks() {
 }
 
 void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
+	vertexBuffers.assign(RenderPass_Count, {});
+	indexBuffers.assign(RenderPass_Count, {});
+
 	// Generate cubes from block data
 	for (int x = 0; x < CHUNK_SIZE; ++x) {
 		for (int y = 0; y < CHUNK_SIZE; ++y) {
@@ -25,11 +28,13 @@ void Chunk::GenerateCubes(const DeviceResources* deviceRes) {
 		}
 	}
 
-	if (vertexBuffer.Size() > 0)
-		vertexBuffer.Create(deviceRes);
+	for (int i = 0; i < RenderPass_Count; ++i) {
+		if (vertexBuffers.at(i).Size() > 0)
+			vertexBuffers.at(i).Create(deviceRes);
 
-	if (indexBuffer.Size() > 0)
-		indexBuffer.Create(deviceRes);
+		if (indexBuffers.at(i).Size() > 0)
+			indexBuffers.at(i).Create(deviceRes);
+	}
 }
 
 
@@ -51,22 +56,23 @@ void Chunk::GenerateCube(const Vector3 position, const BlockId blockId) {
 	const auto bottomFaceUv = GetUvFromTexId(blockData.texIdBottom);
 
 	if (IsFaceVisible(position, Vector3::Backward))
-		PushFace(position + Vector3(-0.5f, -0.5f, 0.5f), Vector3::Up, Vector3::Right, sideFaceUv);
+		PushFace(position + Vector3(-0.5f, -0.5f, 0.5f), Vector3::Up, Vector3::Right, sideFaceUv, blockData.renderPass);
 
 	if (IsFaceVisible(position, Vector3::Right))
-		PushFace(position + Vector3(0.5f, -0.5f, 0.5f), Vector3::Up, Vector3::Forward, sideFaceUv);
+		PushFace(position + Vector3(0.5f, -0.5f, 0.5f), Vector3::Up, Vector3::Forward, sideFaceUv, blockData.renderPass);
 
 	if (IsFaceVisible(position, Vector3::Forward))
-		PushFace(position + Vector3(0.5f, -0.5f, -0.5f), Vector3::Up, Vector3::Left, sideFaceUv);
+		PushFace(position + Vector3(0.5f, -0.5f, -0.5f), Vector3::Up, Vector3::Left, sideFaceUv, blockData.renderPass);
 
 	if (IsFaceVisible(position, Vector3::Left))
-		PushFace(position + Vector3(-0.5f, -0.5f, -0.5f), Vector3::Up, Vector3::Backward, sideFaceUv);
+		PushFace(position + Vector3(-0.5f, -0.5f, -0.5f), Vector3::Up, Vector3::Backward, sideFaceUv, blockData.renderPass);
 
 	if (IsFaceVisible(position, Vector3::Up))
-		PushFace(position + Vector3(0.5f, 0.5f, 0.5f), Vector3::Left, Vector3::Forward, topFaceUv);
+		PushFace(position + Vector3(0.5f, 0.5f, 0.5f), Vector3::Left, Vector3::Forward, topFaceUv, blockData.renderPass);
 
 	if (IsFaceVisible(position, Vector3::Down))
-		PushFace(position + Vector3(-0.5f, -0.5f, 0.5f), Vector3::Right, Vector3::Forward, bottomFaceUv);
+		PushFace(position + Vector3(-0.5f, -0.5f, 0.5f), Vector3::Right, Vector3::Forward, bottomFaceUv,
+			blockData.renderPass);
 }
 
 bool Chunk::IsFaceVisible(const Vector3 position, const Vector3 direction) {
@@ -93,11 +99,11 @@ bool Chunk::IsFaceVisible(const Vector3 position, const Vector3 direction) {
 		);
 	}
 	
-
 	if (neighbour == nullptr)
 		return true;
 
-	if (*neighbour == EMPTY)
+	if (*neighbour == EMPTY ||
+		BlockData::Get(*neighbour).transparent != BlockData::Get(*GetBlock(position.x, position.y, position.z)).transparent)
 		return true;
 
 	return false;
@@ -123,28 +129,32 @@ void Chunk::SetModelMatrix(const Matrix& modelMatrix) {
 	this->modelMatrix = modelMatrix;
 }
 
-void Chunk::Draw(const DeviceResources* deviceRes) const {
+void Chunk::Draw(const DeviceResources* deviceRes, const RenderPass& renderPass) const {
 	if (blocks.size() == 0)
 		return;
 
-	if (vertexBuffer.Size() > 0)
-		vertexBuffer.Apply(deviceRes);
+	if (vertexBuffers.at(renderPass).Size() > 0)
+		vertexBuffers.at(renderPass).Apply(deviceRes);
 
-	if (indexBuffer.Size() > 0)
-		indexBuffer.Apply(deviceRes);
+	if (indexBuffers.at(renderPass).Size() > 0)
+		indexBuffers.at(renderPass).Apply(deviceRes);
 
-	deviceRes->GetD3DDeviceContext()->DrawIndexed(indexBuffer.Size(), 0, 0);
+	deviceRes->GetD3DDeviceContext()->DrawIndexed(indexBuffers.at(renderPass).Size(), 0, 0);
 }
 
 Vector4 ToVector4(const Vector3 v3) {
 	return Vector4(v3.x, v3.y, v3.z, 1.0f);
 }
 
-void Chunk::PushFace(const Vector3 position, const Vector3 up, const Vector3 right, const Vector2 uv) {
+void Chunk::PushFace(const Vector3 position, const Vector3 up, const Vector3 right, const Vector2 uv,
+					 const RenderPass renderPass) {
 	constexpr float uvTileSize = 1.0 / 16.0;
 
 	Vector4 normal = ToVector4(right.Cross(up));
 
+	auto& vertexBuffer = vertexBuffers.at(renderPass);
+	auto& indexBuffer = indexBuffers.at(renderPass);
+	
 	// Vertex 0: Bottom-left
 	const auto a = vertexBuffer.PushVertex({
 		ToVector4(position),

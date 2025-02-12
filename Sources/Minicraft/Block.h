@@ -1,5 +1,12 @@
 #pragma once
 
+enum RenderPass : uint8_t {
+	RenderPass_Opaque = 0,
+	RenderPass_Transparent,
+	RenderPass_Water,
+	RenderPass_Count
+};
+
 #define BLOCKS(F) \
 	F( EMPTY,				-1 ) \
 	F( STONE,				1 ) \
@@ -36,8 +43,8 @@
 	F( FURNACE,				44, 62, 62 ) /* need an orientation & on/off flag */ \
 	F( DISPENSER,			46, 62, 62 ) /* need an orientation flag */ \
 /* TRANSPARENT STUFF */ \
-	F( GLASS,				49, true ) \
-	F( WATER,				205, true ) \
+	F( GLASS,				49, true, RenderPass_Transparent ) \
+	F( WATER,				205, true, RenderPass_Water ) \
 /* 38, 39 & 40 contains greyscale grass for biome variation */
 /* as an exercice you can try to implement that by adding back some vertex color informations to the pipeline */
 /* 52, 53 contains greyscale leaves */
@@ -59,24 +66,29 @@ public:
 	// temporary, should be replaced by a flag system
 	bool transparent;
 
+	RenderPass renderPass;
+
 public:
-	BlockData(const BlockId id, const int texId, const bool transparent = false)
+	BlockData(const BlockId id, const int texId, const bool transparent = false,
+			  const RenderPass renderPass = RenderPass_Opaque)
 		:
 		id(id),
 		texIdSide(texId),
 		texIdTop(texId),
 		texIdBottom(texId),
-		transparent(transparent) {
+		transparent(transparent),
+		renderPass(renderPass) {
 	}
 
 	BlockData(const BlockId id, const int texIdSide, const int texIdTop, const int texIdBottom,
-			  const bool transparent = false)
+			  const bool transparent = false, const RenderPass renderPass = RenderPass_Opaque)
 		:
 		id(id),
 		texIdSide(texIdSide),
 		texIdTop(texIdTop),
 		texIdBottom(texIdBottom),
-		transparent(transparent) {
+		transparent(transparent),
+		renderPass(renderPass) {
 	}
 
 	static const BlockData& Get(BlockId id);

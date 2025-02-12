@@ -22,11 +22,12 @@ public:
 	[[nodiscard]] const Matrix& GetModelMatrix() const;
 	void SetModelMatrix(const Matrix& modelMatrix);
 
-	void Draw(const DeviceResources* deviceRes) const;
+	void Draw(const DeviceResources* deviceRes, const RenderPass& renderPass) const;
 
 private:
 	// Methods
-	void PushFace(Vector3 position, Vector3 up, Vector3 right, Vector2 uv);
+	void PushFace(Vector3 position, Vector3 up, Vector3 right, Vector2 uv,
+				  RenderPass renderPass);
 	void GenerateCube(Vector3 position, BlockId blockId);
 
 	bool IsFaceVisible(Vector3 position, Vector3 direction);
@@ -39,7 +40,8 @@ private:
 	std::vector<BlockId> blocks;
 	World* world;
 
-	VertexBuffer<VertexLayout_PositionNormalUV> vertexBuffer;
-	IndexBuffer indexBuffer;
 	Matrix modelMatrix;
+
+	std::vector<VertexBuffer<VertexLayout_PositionNormalUV>> vertexBuffers;
+	std::vector<IndexBuffer> indexBuffers;
 };

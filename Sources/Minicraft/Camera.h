@@ -17,7 +17,7 @@ public:
 private:
 	float fov;
 	float nearPlane = 0.01f;
-	float farPlane = 500.0f;
+	float farPlane = 5000.0f;
 
 	Vector3 position = Vector3(0, 0, 2);;
 	Quaternion rotation = Quaternion::Identity;

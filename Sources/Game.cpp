@@ -6,10 +6,10 @@
 #include "Game.h"
 
 #include <iostream>
+#include <array>
 
-#include "PerlinNoise.hpp"
-#include "Engine/Buffers.h"
-#include "Minicraft/Chunk.h"
+#include "Engine/BlendState.h"
+#include "Engine/DepthState.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
 #include "Engine/VertexLayout.h"
@@ -24,27 +24,72 @@ using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
 
 // Global stuff
-Shader* basicShader;
+Shader* opaqueShader;
+Shader* transparentShader;
+Shader* waterShader;
 
-struct ModelData {
-	Matrix model;
-};
+BlendState blendStateOpaque;
+BlendState blendStateTransparent(D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD,
+	D3D11_BLEND_ONE, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD);
 
-ConstantBuffer<ModelData> constantBufferModel;
+DepthState depthStateOpaque(true, true);
+DepthState depthStateTransparent(true, false);
+
 ComPtr<ID3D11InputLayout> inputLayout;
 
-World world(12, 4, 12);
+World world(8, 4, 8);
 Texture texture(L"terrain");
 Camera camera(80, 1);
 
+float sign(float v) {
+	if (v < 0)
+		return -1;
+	return 1;
+}
+
+std::vector<std::array<int, 3>> Raycast(const Vector3 pos, const Vector3 dir, const float maxDistance) {
+	std::map<float, std::array<int, 3>> cubes;
+
+	if (dir.x != 0) {
+		const float deltaYX = dir.y / dir.x;
+		const float deltaZX = dir.z / dir.x;
+		const float offsetYX = pos.y - pos.x * deltaYX;
+		const float offsetZX = pos.z - pos.x * deltaZX;
+
+		const float cubeX = (dir.x > 0) ? ceil(pos.x) : floor(pos.x);
+		do {
+			Vector3 const collisionPos(cubeX, deltaYX * cubeX + offsetYX, deltaZX * cubeX + offsetZX);
+			const float distance = Vector3::Distance(pos, collisionPos);
+
+			if (distance > maxDistance)
+				break;
+
+			cubes[distance] = {
+				(int)floor(cubeX - ((dir.x < 0) ? 1 : 0)),
+				(int)floor(collisionPos.y),
+				(int)floor(collisionPos.z)
+			};
+		}
+		while (true);
+	}
+
+	std::vector<std::array<int, 3>> res;
+	std::transform(cubes.begin(), cubes.end(), std::back_inserter(res), [](auto& v) { return v.second; });
+	return res;
+}
+
 // Game
 Game::Game() noexcept(false) {
-	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
+	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2,
+		D3D_FEATURE_LEVEL_11_0, DeviceResources::c_FlipPresent/* | DeviceResources::c_AllowTearing*/);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
 
 Game::~Game() {
-	delete basicShader;
+	delete opaqueShader;
+	delete transparentShader;
+	delete waterShader;
+	
 	g_inputLayouts.clear();
 }
 
@@ -60,20 +105,26 @@ void Game::Initialize(HWND window, const int width, const int height) {
 	m_deviceResources->CreateDeviceResources();
 	m_deviceResources->CreateWindowSizeDependentResources();
 
-	basicShader = new Shader(L"Basic");
-	basicShader->Create(m_deviceResources.get());
 
-	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), basicShader);
+	opaqueShader = new Shader(L"Basic");
+	opaqueShader->Create(m_deviceResources.get());
+	transparentShader = new Shader(L"Basic");
+	transparentShader->Create(m_deviceResources.get());
+	waterShader = new Shader(L"Water");
+	waterShader->Create(m_deviceResources.get());
+
+	blendStateOpaque.Create(m_deviceResources.get());
+	blendStateTransparent.Create(m_deviceResources.get());
+	depthStateOpaque.Create(m_deviceResources.get());
+	depthStateTransparent.Create(m_deviceResources.get());
+
+	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), opaqueShader);
 
 	texture.Create(m_deviceResources.get());
 
 	camera.UpdateAspectRatio((float)width / (float)height);
 
 	world.Generate(m_deviceResources.get());
-
-	constantBufferModel.Create(m_deviceResources.get());
-
-	//std::cout << "Block: " << (int)*world.GetBlock(33, 2, 0);
 }
 
 void Game::Tick() {
@@ -118,17 +169,25 @@ void Game::Render() {
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(inputLayout.Get());
 	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
-	basicShader->Apply(m_deviceResources.get());
-
-	// Prepare and send Constant Buffers (Model, View and Projection matrices) to Vertex Shader.
-
-	constantBufferModel.ApplyToVS(m_deviceResources.get(), 0);
-
+	opaqueShader->Apply(m_deviceResources.get());
+	
 	texture.Apply(m_deviceResources.get());
-
 	camera.Apply(m_deviceResources.get());
 
-	world.Draw(m_deviceResources.get());
+	// Opaque render pass
+	blendStateOpaque.Apply(m_deviceResources.get());
+	depthStateOpaque.Apply(m_deviceResources.get());
+	opaqueShader->Apply(m_deviceResources.get());
+	world.Draw(m_deviceResources.get(), RenderPass_Opaque);
+
+	// Transparent render pass
+	blendStateTransparent.Apply(m_deviceResources.get());
+	depthStateTransparent.Apply(m_deviceResources.get());
+	transparentShader->Apply(m_deviceResources.get());
+	world.Draw(m_deviceResources.get(), RenderPass_Transparent);
+
+	waterShader->Apply(m_deviceResources.get());
+	world.Draw(m_deviceResources.get(), RenderPass_Water);
 	
 	m_deviceResources->Present();
 }

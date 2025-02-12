@@ -139,15 +139,15 @@ void World::GenerateCubes(const DeviceResources* deviceRes) {
 	}
 }
 
-void World::Draw(const DeviceResources* deviceRes) {
+void World::Draw(const DeviceResources* deviceRes, RenderPass renderPass) {
 	cbModelData.ApplyToVS(deviceRes, 0);
-
+	
 	for (unsigned int chunkX = 0; chunkX < nbChunksX; ++chunkX) {
 		for (unsigned int chunkY = 0; chunkY < nbChunksY; ++chunkY) {
 			for (unsigned int chunkZ = 0; chunkZ < nbChunksZ; ++chunkZ) {
 				auto& chunk = chunks.at(chunkX).at(chunkY).at(chunkZ);
 				cbModelData.UpdateBuffer(deviceRes, { chunk.GetModelMatrix().Transpose() });
-				chunk.Draw(deviceRes);
+				chunk.Draw(deviceRes, renderPass);
 			}
 		}
 	}

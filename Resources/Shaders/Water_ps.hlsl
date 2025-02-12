@@ -10,10 +10,8 @@ struct Input {
 float4 main(Input input) : SV_TARGET {
     float3 lightDir = float3(0.5, 0.5, 0.5);
     lightDir = normalize(lightDir);
-    float4 lightDir4 = float4(lightDir, 1.0);
-
-    float4 lightReflect = reflect(lightDir4, input.normal);
-
+    float4 lightDir4 = float4(lightDir, 1.0); 
+    
     float4 color = tex.Sample(samplerState, input.uv);
     return dot(input.normal, lightDir4) * color;
 }
